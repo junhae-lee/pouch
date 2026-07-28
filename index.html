@@ -47,71 +47,93 @@
     color: #a2dc00;
     line-height: 1;
   }
-  #alignBtn {
+  .icon44 {
     flex: none;
-    padding: 9px 16px;
-    border-radius: 999px;
-    font-size: 14px;
-    font-weight: 800;
-    background: #ffffff;
-    color: #1c1c1a;
-    border: 2px solid #a2dc00;
-    transition: background 0.15s, color 0.15s;
-  }
-  #alignBtn.grid {
-    background: #a2dc00;
-    color: #ffffff;
-    border-color: #a2dc00;
-  }
-  .title-group { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-  .folder-name {
-    font-size: 13px;
-    color: #8a8a85;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .header-btns { display: flex; gap: 8px; flex: none; }
-  #listBtn {
-    flex: none;
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    font-size: 17px;
-    background: #ffffff;
-    border: 2px solid #a2dc00;
+    width: 44px; height: 44px;
     padding: 0;
-    transition: background 0.15s;
+    background: none;
+    border: none;
+    transition: transform 0.1s;
   }
-  #listBtn:active { background: rgba(162,220,0,0.25); }
+  .icon44:active { transform: scale(0.9); }
+  .icon44 svg { display: block; }
+  #alignBtn svg { transition: transform 0.3s; }
+  #alignBtn.grid svg { transform: rotate(180deg); }
+  #mainControls {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 106px;
+    width: 330px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
 
-  /* ===== 우측 서랍 (파우치 목록) ===== */
-  #drawerDim {
+  /* ===== 하단 내비 필 (홈 ↔ 내 파우치) ===== */
+  #navPill {
     position: fixed;
-    inset: 0;
-    z-index: 44;
-    background: rgba(0,0,0,0.3);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.25s;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(26px, env(safe-area-inset-bottom));
+    z-index: 47;
+    display: flex;
+    gap: 7px;
+    padding: 5px 6px;
+    border: 1.5px solid #a2dc00;
+    border-radius: 999px;
+    background: rgba(246,246,242,0.85);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
   }
-  #drawerDim.open { opacity: 1; pointer-events: auto; }
+  .nav-icon {
+    flex: none;
+    width: 44px; height: 44px;
+    padding: 0;
+    border: none;
+    background: none;
+    opacity: 0.35;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .nav-icon svg { display: block; }
+  .nav-icon.active { opacity: 1; }
+  .nav-icon:active { transform: scale(0.92); }
+
+  /* ===== 내 파우치 (전체 페이지) ===== */
   #folderList {
     position: fixed;
-    top: 0; right: 0; bottom: 0;
+    inset: 0;
     z-index: 46;
-    width: min(78vw, 320px);
-    background: #ffffff;
-    border-left: 1px solid rgba(0,0,0,0.1);
-    box-shadow: -16px 0 50px rgba(0,0,0,0.16);
+    background: #f6f6f2;
+    border: 4px solid #a2dc00;
+    border-radius: 24px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    gap: 14px;
+    padding: max(18px, env(safe-area-inset-top)) 30px 120px;
     overflow-y: auto;
     transform: translateX(105%);
     transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
   #folderList.open { transform: translateX(0); }
+  .list-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .list-btns { display: flex; gap: 6px; margin-top: 14px; }
+  .list-btns button {
+    flex: none;
+    width: 40px; height: 40px;
+    padding: 0;
+    border: none;
+    background: none;
+    transition: transform 0.1s;
+  }
+  .list-btns button:active { transform: scale(0.9); }
+  .list-btns svg { display: block; }
 
   /* ===== 페이지 (편집) ===== */
   .page {
@@ -308,12 +330,8 @@
     transition: transform 0.08s;
   }
   button:active { transform: scale(0.96); }
-  /* ===== 촬영 버튼 (하단 중앙) ===== */
+  /* ===== 촬영 버튼 ===== */
   #shutterMain {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: max(24px, env(safe-area-inset-bottom));
     width: 75px; height: 75px;
     z-index: 10;
     background: none;
@@ -324,7 +342,7 @@
   }
   #shutterMain svg { display: block; }
   #shutterMain .inner { transition: fill 0.12s; }
-  #shutterMain.pressed { transform: translateX(-50%) scale(0.9); }
+  #shutterMain.pressed { transform: scale(0.9); }
   #shutterMain.pressed .inner { fill: #7fae00; }
   /* ===== 카메라 화면 (라임 조준경) ===== */
   #camera {
@@ -562,26 +580,54 @@
 
   <header>
     <div class="title-group">
-      <div class="logo">Pouch!</div>
+      <div class="logo">Pouch</div>
       <div id="folderName" class="folder-name"></div>
-    </div>
-    <div class="header-btns">
-      <button id="alignBtn">🧲 정렬</button>
-      <button id="listBtn" aria-label="파우치 목록">🗂️</button>
     </div>
   </header>
 
-  <button id="shutterMain" aria-label="촬영">
-    <svg width="75" height="75" viewBox="0 0 75 75" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1.5" y="1.5" width="72" height="72" rx="36" stroke="#A2DC00" stroke-width="3"/>
-      <circle class="inner" cx="37.4643" cy="37.4643" r="29.4643" fill="#A2DC00"/>
+  <div id="mainControls">
+    <button id="albumMainBtn" class="icon44" aria-label="앨범에서 채집">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+        <path d="M29.7 14H14.3C12.43 14 11 15.3812 11 17.1875V27.8125C11 29.6187 12.43 31 14.3 31H29.7C31.57 31 33 29.6187 33 27.8125V17.1875C33 15.3812 31.57 14 29.7 14ZM30.8 24.4125L28.71 22.3937C27.39 21.225 25.3 21.225 24.09 22.3937L23.1 23.35L19.91 20.2687C18.59 19.1 16.5 19.1 15.29 20.2687L13.2 22.2875V17.1875C13.2 16.55 13.64 16.125 14.3 16.125H29.7C30.36 16.125 30.8 16.55 30.8 17.1875V24.4125Z" fill="white"/>
+      </svg>
+    </button>
+    <button id="shutterMain" aria-label="촬영">
+      <svg width="75" height="75" viewBox="0 0 75 75" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="37.5" cy="37.5" r="36" stroke="#A2DC00" stroke-width="3"/>
+        <circle class="inner" cx="37.5" cy="37.5" r="29.5" fill="#A2DC00"/>
+      </svg>
+    </button>
+    <button id="alignBtn" class="icon44" aria-label="정렬 전환">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M11.8807 27.8508V27.8083L17.9133 22.7414V25.6224H23.9829C31.2835 25.6224 31.9255 21.8872 31.9255 21.8872C32.4614 26.8109 29.8457 30.0367 25.0759 30.0367H17.9239V32.9177L11.8913 27.8508H11.8807Z" fill="white"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M33.1082 16.8734V16.9158L27.0756 21.9827V19.1017H21.006C13.7054 19.1017 13.0634 22.8369 13.0634 22.8369C12.5275 17.9133 15.1432 14.6874 19.913 14.6874H27.065V11.8065L33.0976 16.8734H33.1082Z" fill="white"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<div id="navPill">
+  <button id="navCamBtn" class="nav-icon active" aria-label="파우치 홈">
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+      <path d="M22 20.9C20.79 20.9 19.8 21.89 19.8 23.1C19.8 24.31 20.79 25.3 22 25.3C23.21 25.3 24.2 24.31 24.2 23.1C24.2 21.89 23.21 20.9 22 20.9ZM29.7 16.5H28.27L27.94 15.51C27.83 15.18 27.72 14.96 27.5 14.63C27.5 14.63 27.5 14.63 27.5 14.52L27.39 14.41C26.73 13.64 25.85 13.2 24.86 13.2H19.14C18.59 13.2 17.93 13.42 17.49 13.75C17.38 13.75 17.38 13.86 17.27 13.86C16.72 14.3 16.28 14.85 16.06 15.51L15.73 16.5H14.3C12.43 16.5 11 17.93 11 19.8V28.6C11 30.47 12.43 31.9 14.3 31.9H29.7C31.57 31.9 33 30.47 33 28.6V19.8C33 17.93 31.57 16.5 29.7 16.5ZM22 27.5C19.58 27.5 17.6 25.52 17.6 23.1C17.6 20.68 19.58 18.7 22 18.7C24.42 18.7 26.4 20.68 26.4 23.1C26.4 25.52 24.42 27.5 22 27.5Z" fill="white"/>
+    </svg>
+  </button>
+  <button id="listBtn" class="nav-icon" aria-label="내 파우치">
+    <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+      <g transform="translate(6, 7)">
+        <path d="M27.4466 24.012L25.2267 10.4704C25.1776 10.1674 24.9887 9.9157 24.7326 9.77446L24.7455 6.55663C24.7843 6.28442 24.7067 6.00706 24.5282 5.79391C24.3419 5.56792 24.065 5.43951 23.7727 5.43951H9.18041C8.88804 5.43951 8.60862 5.56792 8.42233 5.79134C8.23605 6.01477 8.15843 6.30753 8.21018 6.59002L8.22311 9.77189C7.96438 9.91313 7.77293 10.1648 7.72377 10.4704L5.49094 24.1044C5.44437 24.3869 5.52458 24.6771 5.71345 24.8954C5.89973 25.1137 6.17657 25.2395 6.46376 25.2395H26.4867C26.4893 25.2395 26.4893 25.2395 26.4919 25.2395C27.0378 25.2395 27.4777 24.8004 27.4777 24.2611C27.4803 24.1763 27.4673 24.0916 27.4466 24.012ZM20.7197 13.3955V14.4972C20.7197 16.8187 18.8154 18.7063 16.4765 18.7063C14.1376 18.7063 12.236 16.8187 12.236 14.4972V13.3955C12.029 13.2054 11.8971 12.9358 11.8971 12.6353C11.8971 12.0601 12.3679 11.5952 12.9449 11.5952C13.5245 11.5952 13.9928 12.0626 13.9928 12.6353C13.9928 12.9563 13.8453 13.2388 13.615 13.4289V14.4997C13.615 16.0637 14.8983 17.3375 16.474 17.3375C18.0496 17.3375 19.3329 16.0637 19.3329 14.4997V13.4289C19.1052 13.2388 18.9552 12.9563 18.9552 12.6353C18.9552 12.0601 19.4235 11.5952 20.003 11.5952C20.5826 11.5952 21.0509 12.0626 21.0509 12.6353C21.0586 12.9358 20.9267 13.2054 20.7197 13.3955ZM22.1686 9.64862H10.7845L10.368 7.3964H22.5877L22.1686 9.64862Z" fill="white"/>
+      </g>
     </svg>
   </button>
 </div>
 
 <div id="camera">
   <video playsinline autoplay muted></video>
-  <div class="cam-logo">Pouch!</div>
+  <div class="cam-logo">Pouch</div>
   <div id="aimGuide"><i></i><i></i><i></i><i></i></div>
   <div class="cam-hint">채집할 것을 가운데에 놓아주세요</div>
   <button id="closeCam">✕</button>
@@ -594,13 +640,25 @@
   <input type="file" id="galleryInput" accept="image/*" hidden>
 </div>
 
-<div id="drawerDim"></div>
 <div id="folderList">
-  <div class="page-head">
-    <h2>내 파우치</h2>
-    <div class="header-btns">
-      <button class="round-btn" id="newFolderBtn">＋</button>
-      <button class="round-btn" id="closeList">✕</button>
+  <div class="list-head">
+    <div class="logo">Pouch</div>
+    <div class="list-btns">
+      <button id="newFolderBtn" aria-label="새 파우치">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="20" fill="white"/>
+          <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+          <path d="M10.9063 20.2273L29.5482 20.2273" stroke="black" stroke-linecap="round"/>
+          <path d="M20.2273 10.9063V29.5482" stroke="black" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <button id="closeList" aria-label="닫기">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="20" fill="#A2DC00"/>
+          <path d="M13.6364 13.6364L26.8182 26.8182" stroke="white" stroke-linecap="round"/>
+          <path d="M26.8182 13.6364L13.6364 26.8182" stroke="white" stroke-linecap="round"/>
+        </svg>
+      </button>
     </div>
   </div>
   <div id="folderGrid"></div>
@@ -825,12 +883,10 @@ alignBtn.addEventListener("click", () => {
     mode = "grid";
     engine.gravity.x = 0; engine.gravity.y = 1;  // 격자 중엔 센서 중력 초기화
     enterGrid();
-    alignBtn.textContent = "🌀 자유";
     alignBtn.classList.add("grid");
   } else {
     mode = "free";
     exitGrid();
-    alignBtn.textContent = "🧲 정렬";
     alignBtn.classList.remove("grid");
   }
 });
@@ -1223,6 +1279,7 @@ document.getElementById("shutter").addEventListener("click", async () => {
 // ===== 앨범에서 가져오기 =====
 const galleryInput = document.getElementById("galleryInput");
 document.getElementById("galleryBtn").addEventListener("click", () => galleryInput.click());
+document.getElementById("albumMainBtn").addEventListener("click", () => galleryInput.click());
 
 galleryInput.addEventListener("change", async () => {
   const file = galleryInput.files && galleryInput.files[0];
@@ -1288,19 +1345,22 @@ function switchFolder(id) {
   if (mode === "grid") enterGrid();
 }
 
-// ===== 파우치 목록 서랍 (우측) =====
+// ===== 내 파우치 페이지 (내비 필 전환) =====
 const folderListEl = document.getElementById("folderList");
 const folderGridEl = document.getElementById("folderGrid");
-const drawerDim = document.getElementById("drawerDim");
+const navCamBtn = document.getElementById("navCamBtn");
+const navBagBtn = document.getElementById("listBtn");
 
 function openDrawer() {
   renderFolderList();
   folderListEl.classList.add("open");
-  drawerDim.classList.add("open");
+  navBagBtn.classList.add("active");
+  navCamBtn.classList.remove("active");
 }
 function closeDrawer() {
   folderListEl.classList.remove("open");
-  drawerDim.classList.remove("open");
+  navBagBtn.classList.remove("active");
+  navCamBtn.classList.add("active");
 }
 
 function renderFolderList() {
@@ -1318,7 +1378,7 @@ function renderFolderList() {
     `;
     card.addEventListener("click", () => {
       switchFolder(f.id);
-      renderFolderList();  // 서랍 열어둔 채 현재 표시만 갱신
+      closeDrawer();  // 선택하면 파우치 홈으로
     });
     card.querySelector(".edit-btn").addEventListener("click", (e) => {
       e.stopPropagation();
@@ -1334,26 +1394,10 @@ function renderFolderList() {
   folderGridEl.appendChild(add);
 }
 
-document.getElementById("listBtn").addEventListener("click", openDrawer);
+navBagBtn.addEventListener("click", openDrawer);
+navCamBtn.addEventListener("click", closeDrawer);
 document.getElementById("closeList").addEventListener("click", closeDrawer);
-drawerDim.addEventListener("click", closeDrawer);
 document.getElementById("newFolderBtn").addEventListener("click", () => openFolderEdit(null));
-
-// 화면 오른쪽 끝에서 왼쪽으로 스와이프하면 서랍 열림
-let edgeSwipe = null;
-window.addEventListener("pointerdown", (e) => {
-  if (e.clientX > window.innerWidth - 24 && !folderListEl.classList.contains("open")) {
-    edgeSwipe = { x0: e.clientX };
-  }
-}, true);
-window.addEventListener("pointermove", (e) => {
-  if (edgeSwipe && edgeSwipe.x0 - e.clientX > 40) {
-    edgeSwipe = null;
-    endDrag();  // 진행 중이던 스티커 드래그는 정리
-    openDrawer();
-  }
-}, true);
-window.addEventListener("pointerup", () => { edgeSwipe = null; }, true);
 
 // ===== 파우치 편집 페이지 =====
 const folderEditEl = document.getElementById("folderEdit");
