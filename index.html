@@ -643,8 +643,13 @@ function applyScale(item, s) {
   const newEw = Math.round((item.baseEw || item.baseSize) * s);
   const newEh = Math.round((item.baseEh || item.baseSize) * s);
   const newSize = Math.max(newEw, newEh);
-  const k = newSize / item.size;
-  Matter.Body.scale(item.body, k, k);  // 물리 몸집도 함께
+  // 몸체를 새로 만들어 교체 (정지 상태에서 scale하면 질량이 ∞로 굳는 버그 회피)
+  const pos = { x: item.body.position.x, y: item.body.position.y };
+  const angle = item.body.angle;
+  Composite.remove(engine.world, item.body);
+  item.body = makeBody(pos.x, pos.y, newSize);
+  Body.setAngle(item.body, angle);
+  Body.setStatic(item.body, true);  // 조절 중엔 계속 공중 정지
   item.size = newSize;
   if (item.ew !== undefined) { item.ew = newEw; item.eh = newEh; }
   item.el.style.width = newEw + "px";
