@@ -418,9 +418,17 @@
     height: 28px;
   }
   #sizeVal { flex: none; width: 48px; text-align: right; font-size: 13px; color: #7fae00; font-weight: 700; }
+  #resizePanel .row.btns { margin-top: 12px; gap: 10px; }
+  #stickerDelete {
+    flex: 1;
+    padding: 12px 0;
+    background: rgba(220,70,70,0.08);
+    border: 1px solid rgba(200,60,60,0.45);
+    color: #c94b4b;
+    font-weight: 700;
+  }
   #resizeDone {
-    margin-top: 12px;
-    width: 100%;
+    flex: 1.4;
     padding: 12px 0;
     background: #a2dc00;
     color: #fff;
@@ -537,7 +545,10 @@
     <input type="range" id="sizeSlider" min="50" max="200" value="100">
     <span id="sizeVal">100%</span>
   </div>
-  <button id="resizeDone">완료</button>
+  <div class="row btns">
+    <button id="stickerDelete">🗑️ 삭제</button>
+    <button id="resizeDone">완료</button>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -892,6 +903,29 @@ document.getElementById("resizeDone").addEventListener("click", () => {
   Body.setStatic(resizeTarget.body, false);
   resizeTarget = null;
   resizePanel.classList.remove("open");
+});
+
+// ===== 스티커 삭제 (길게 누르기 패널) =====
+document.getElementById("stickerDelete").addEventListener("click", () => {
+  if (!resizeTarget) return;
+  if (!confirm("이 스티커를 삭제할까요?")) return;
+  const item = resizeTarget;
+  // 화면·물리 세계에서 제거
+  Composite.remove(engine.world, item.body);
+  item.el.remove();
+  const i = bodies.indexOf(item);
+  if (i >= 0) bodies.splice(i, 1);
+  // 채집품이면 보관함에서도 제거 + 뒤 스티커들 인덱스 당기기
+  if (item.storeIdx !== null) {
+    currentFolder().stickers.splice(item.storeIdx, 1);
+    saveDB();
+    for (const b of bodies) {
+      if (b.storeIdx !== null && b.storeIdx > item.storeIdx) b.storeIdx--;
+    }
+  }
+  resizeTarget = null;
+  resizePanel.classList.remove("open");
+  if (mode === "grid") enterGrid();  // 정렬 모드면 빈자리 메꾸기
 });
 
 // ===== 센서 자동 활성 (자유정렬 기본값) =====
