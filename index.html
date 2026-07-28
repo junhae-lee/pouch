@@ -326,19 +326,63 @@
   #shutterMain .inner { transition: fill 0.12s; }
   #shutterMain.pressed { transform: translateX(-50%) scale(0.9); }
   #shutterMain.pressed .inner { fill: #7fae00; }
-  /* ===== 카메라 화면 ===== */
+  /* ===== 카메라 화면 (라임 조준경) ===== */
   #camera {
     display: none;
     position: fixed;
     inset: 0;
     z-index: 50;
     background: #000;
+    border: 4px solid #a2dc00;
+    border-radius: 24px;
+    overflow: hidden;
   }
   #camera.open { display: block; }
   #camera video {
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+  .cam-logo {
+    position: absolute;
+    top: max(20px, env(safe-area-inset-top));
+    left: 22px;
+    font-family: "Baloo 2", sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    color: #a2dc00;
+    pointer-events: none;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.5);
+  }
+  /* 조준 브래킷 */
+  #aimGuide {
+    position: absolute;
+    top: 44%;
+    left: 50%;
+    width: min(240px, 62vw);
+    height: min(240px, 62vw);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #aimGuide i {
+    position: absolute;
+    width: 30px; height: 30px;
+    border: 4px solid #a2dc00;
+    border-radius: 5px;
+  }
+  #aimGuide i:nth-child(1) { top: 0; left: 0; border-right: none; border-bottom: none; border-bottom-left-radius: 0; border-top-right-radius: 0; }
+  #aimGuide i:nth-child(2) { top: 0; right: 0; border-left: none; border-bottom: none; border-bottom-right-radius: 0; border-top-left-radius: 0; }
+  #aimGuide i:nth-child(3) { bottom: 0; left: 0; border-right: none; border-top: none; border-top-left-radius: 0; border-bottom-right-radius: 0; }
+  #aimGuide i:nth-child(4) { bottom: 0; right: 0; border-left: none; border-top: none; border-top-right-radius: 0; border-bottom-left-radius: 0; }
+  .cam-hint {
+    position: absolute;
+    top: 62%;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
   }
   #camera .cam-ui {
     position: absolute;
@@ -349,12 +393,34 @@
     justify-content: center;
   }
   #shutter {
-    width: 74px; height: 74px;
+    width: 75px; height: 75px;
+    flex: none;
+    position: relative;
+    border-radius: 50%;
+    background: none;
+    border: 3px solid #a2dc00;
+    padding: 0;
+  }
+  #shutter::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: #a2dc00;
+    transition: background 0.12s, transform 0.1s;
+  }
+  #shutter:active::after { background: #7fae00; transform: scale(0.9); }
+  #flipCam {
+    position: absolute;
+    right: 24px;
+    bottom: 0; top: 0;
+    margin: auto 0;
+    width: 52px; height: 52px;
     flex: none;
     border-radius: 50%;
-    background: #fff;
-    border: 5px solid rgba(255,255,255,0.4);
-    background-clip: padding-box;
+    background: rgba(0,0,0,0.4);
+    border: 2px solid #a2dc00;
+    font-size: 22px;
     padding: 0;
   }
   #closeCam {
@@ -364,11 +430,22 @@
     width: 44px; height: 44px;
     flex: none;
     border-radius: 50%;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.4);
+    border: 2px solid #a2dc00;
     color: #fff;
-    font-size: 20px;
+    font-size: 19px;
     padding: 0;
   }
+  /* 촬영 플래시 */
+  #flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  #flash.boom { opacity: 0.85; transition: opacity 0.05s; }
   #galleryBtn {
     position: absolute;
     left: 24px;
@@ -378,10 +455,10 @@
     width: 52px; height: 52px;
     flex: none;
     border-radius: 14px;
-    background: rgba(0,0,0,0.5);
-    border: 1.5px solid rgba(255,255,255,0.5);
+    background: rgba(0,0,0,0.4);
+    border: 2px solid #a2dc00;
     color: #fff;
-    font-size: 24px;
+    font-size: 22px;
     padding: 0;
   }
 
@@ -504,11 +581,16 @@
 
 <div id="camera">
   <video playsinline autoplay muted></video>
+  <div class="cam-logo">Pouch!</div>
+  <div id="aimGuide"><i></i><i></i><i></i><i></i></div>
+  <div class="cam-hint">채집할 것을 가운데에 놓아주세요</div>
   <button id="closeCam">✕</button>
   <div class="cam-ui">
     <button id="galleryBtn" aria-label="앨범에서 가져오기">🖼️</button>
     <button id="shutter" aria-label="촬영"></button>
+    <button id="flipCam" aria-label="카메라 전환">🔄</button>
   </div>
+  <div id="flash"></div>
   <input type="file" id="galleryInput" accept="image/*" hidden>
 </div>
 
@@ -996,15 +1078,24 @@ const shutterMain = document.getElementById("shutterMain");
 shutterMain.addEventListener("pointerdown", () => shutterMain.classList.add("pressed"));
 shutterMain.addEventListener("pointerup", () => shutterMain.classList.remove("pressed"));
 shutterMain.addEventListener("pointercancel", () => shutterMain.classList.remove("pressed"));
+let facing = "environment";  // 후면 시작
+
+async function openStream(mode) {
+  const s = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: mode },
+    audio: false,
+  });
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  stream = s;
+  videoEl.srcObject = s;
+  videoEl.style.transform = mode === "user" ? "scaleX(-1)" : "";  // 전면은 거울모드
+  try { await videoEl.play(); } catch {}
+}
+
 shutterMain.addEventListener("click", async () => {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" },  // 후면 카메라 우선
-      audio: false,
-    });
-    videoEl.srcObject = stream;
+    await openStream(facing);
     cameraEl.classList.add("open");
-    try { await videoEl.play(); } catch {}  // iOS: 명시적 재생 필요할 때 있음
   } catch (err) {
     const name = err && err.name;
     if (name === "NotAllowedError") {
@@ -1018,6 +1109,17 @@ shutterMain.addEventListener("click", async () => {
     } else {
       alert("카메라를 열 수 없어요 (" + name + ").\n카톡·인스타 안에서 열었다면 Safari로 다시 열어주세요!");
     }
+  }
+});
+
+// 전후면 전환
+document.getElementById("flipCam").addEventListener("click", async () => {
+  const next = facing === "environment" ? "user" : "environment";
+  try {
+    await openStream(next);
+    facing = next;
+  } catch {
+    alert("카메라 전환에 실패했어요 🥲");
   }
 });
 
@@ -1104,6 +1206,11 @@ document.getElementById("shutter").addEventListener("click", async () => {
   }
   const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
   if (!vw || !vh) { alert("카메라 화면이 아직 준비되지 않았어요. 한 번 더 눌러주세요!"); return; }
+  // 찰칵! 플래시 + 진동
+  const flash = document.getElementById("flash");
+  flash.classList.add("boom");
+  setTimeout(() => flash.classList.remove("boom"), 90);
+  if (navigator.vibrate) navigator.vibrate(35);
   // 중앙 정사각형 512px로 캡처
   const s = Math.min(vw, vh);
   const cap = document.createElement("canvas");
