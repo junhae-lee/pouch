@@ -374,7 +374,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 45;
     background: #000;
     border: 4px solid #a2dc00;
     border-radius: 24px;
@@ -397,43 +397,15 @@
     pointer-events: none;
     text-shadow: 0 1px 6px rgba(0,0,0,0.5);
   }
-  /* 조준 브래킷 */
-  #aimGuide {
-    position: absolute;
-    top: 44%;
-    left: 50%;
-    width: min(240px, 62vw);
-    height: min(240px, 62vw);
-    transform: translate(-50%, -50%);
-    pointer-events: none;
-  }
-  #aimGuide i {
-    position: absolute;
-    width: 30px; height: 30px;
-    border: 4px solid #a2dc00;
-    border-radius: 5px;
-  }
-  #aimGuide i:nth-child(1) { top: 0; left: 0; border-right: none; border-bottom: none; border-bottom-left-radius: 0; border-top-right-radius: 0; }
-  #aimGuide i:nth-child(2) { top: 0; right: 0; border-left: none; border-bottom: none; border-bottom-right-radius: 0; border-top-left-radius: 0; }
-  #aimGuide i:nth-child(3) { bottom: 0; left: 0; border-right: none; border-top: none; border-top-left-radius: 0; border-bottom-right-radius: 0; }
-  #aimGuide i:nth-child(4) { bottom: 0; right: 0; border-left: none; border-top: none; border-top-right-radius: 0; border-bottom-left-radius: 0; }
-  .cam-hint {
-    position: absolute;
-    top: 62%;
-    left: 0; right: 0;
-    text-align: center;
-    font-size: 13px;
-    color: rgba(255,255,255,0.75);
-    pointer-events: none;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.6);
-  }
   #camera .cam-ui {
     position: absolute;
-    left: 0; right: 0;
-    bottom: max(28px, env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 106px;
+    width: 330px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
   }
   #shutter {
     width: 75px; height: 75px;
@@ -453,32 +425,6 @@
     transition: background 0.12s, transform 0.1s;
   }
   #shutter:active::after { background: #7fae00; transform: scale(0.9); }
-  #flipCam {
-    position: absolute;
-    right: 24px;
-    bottom: 0; top: 0;
-    margin: auto 0;
-    width: 52px; height: 52px;
-    flex: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.4);
-    border: 2px solid #a2dc00;
-    font-size: 22px;
-    padding: 0;
-  }
-  #closeCam {
-    position: absolute;
-    top: max(16px, env(safe-area-inset-top));
-    right: 16px;
-    width: 44px; height: 44px;
-    flex: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.4);
-    border: 2px solid #a2dc00;
-    color: #fff;
-    font-size: 19px;
-    padding: 0;
-  }
   /* ===== 채집 검수 화면 ===== */
   #review {
     display: none;
@@ -571,21 +517,6 @@
     transition: opacity 0.25s;
   }
   #flash.boom { opacity: 0.85; transition: opacity 0.05s; }
-  #galleryBtn {
-    position: absolute;
-    left: 24px;
-    bottom: 0;
-    top: 0;
-    margin: auto 0;
-    width: 52px; height: 52px;
-    flex: none;
-    border-radius: 14px;
-    background: rgba(0,0,0,0.4);
-    border: 2px solid #a2dc00;
-    color: #fff;
-    font-size: 22px;
-    padding: 0;
-  }
 
   /* ===== 크기 조절 패널 ===== */
   .sticker.selected {
@@ -728,13 +659,13 @@
 </div>
 
 <div id="navPill">
-  <button id="navCamBtn" class="nav-icon active" aria-label="파우치 홈">
+  <button id="navCamBtn" class="nav-icon" aria-label="카메라">
     <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
       <path d="M22 20.9C20.79 20.9 19.8 21.89 19.8 23.1C19.8 24.31 20.79 25.3 22 25.3C23.21 25.3 24.2 24.31 24.2 23.1C24.2 21.89 23.21 20.9 22 20.9ZM29.7 16.5H28.27L27.94 15.51C27.83 15.18 27.72 14.96 27.5 14.63C27.5 14.63 27.5 14.63 27.5 14.52L27.39 14.41C26.73 13.64 25.85 13.2 24.86 13.2H19.14C18.59 13.2 17.93 13.42 17.49 13.75C17.38 13.75 17.38 13.86 17.27 13.86C16.72 14.3 16.28 14.85 16.06 15.51L15.73 16.5H14.3C12.43 16.5 11 17.93 11 19.8V28.6C11 30.47 12.43 31.9 14.3 31.9H29.7C31.57 31.9 33 30.47 33 28.6V19.8C33 17.93 31.57 16.5 29.7 16.5ZM22 27.5C19.58 27.5 17.6 25.52 17.6 23.1C17.6 20.68 19.58 18.7 22 18.7C24.42 18.7 26.4 20.68 26.4 23.1C26.4 25.52 24.42 27.5 22 27.5Z" fill="white"/>
     </svg>
   </button>
-  <button id="listBtn" class="nav-icon" aria-label="내 파우치">
+  <button id="listBtn" class="nav-icon active" aria-label="파우치">
     <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
       <g transform="translate(6, 7)">
@@ -747,13 +678,21 @@
 <div id="camera">
   <video playsinline autoplay muted></video>
   <div class="cam-logo">Pouch</div>
-  <div id="aimGuide"><i></i><i></i><i></i><i></i></div>
-  <div class="cam-hint">채집할 것을 가운데에 놓아주세요</div>
-  <button id="closeCam">✕</button>
   <div class="cam-ui">
-    <button id="galleryBtn" aria-label="앨범에서 가져오기">🖼️</button>
+    <button id="galleryBtn" class="icon44" aria-label="앨범에서 채집">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+        <path d="M29.7 14H14.3C12.43 14 11 15.3812 11 17.1875V27.8125C11 29.6187 12.43 31 14.3 31H29.7C31.57 31 33 29.6187 33 27.8125V17.1875C33 15.3812 31.57 14 29.7 14ZM30.8 24.4125L28.71 22.3937C27.39 21.225 25.3 21.225 24.09 22.3937L23.1 23.35L19.91 20.2687C18.59 19.1 16.5 19.1 15.29 20.2687L13.2 22.2875V17.1875C13.2 16.55 13.64 16.125 14.3 16.125H29.7C30.36 16.125 30.8 16.55 30.8 17.1875V24.4125Z" fill="white"/>
+      </svg>
+    </button>
     <button id="shutter" aria-label="촬영"></button>
-    <button id="flipCam" aria-label="카메라 전환">🔄</button>
+    <button id="flipCam" class="icon44" aria-label="카메라 전환">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M11.8807 27.8508V27.8083L17.9133 22.7414V25.6224H23.9829C31.2835 25.6224 31.9255 21.8872 31.9255 21.8872C32.4614 26.8109 29.8457 30.0367 25.0759 30.0367H17.9239V32.9177L11.8913 27.8508H11.8807Z" fill="white"/>
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M33.1082 16.8734V16.9158L27.0756 21.9827V19.1017H21.006C13.7054 19.1017 13.0634 22.8369 13.0634 22.8369C12.5275 17.9133 15.1432 14.6874 19.913 14.6874H27.065V11.8065L33.0976 16.8734H33.1082Z" fill="white"/>
+      </svg>
+    </button>
   </div>
   <div id="flash"></div>
   <input type="file" id="galleryInput" accept="image/*" hidden>
@@ -1299,6 +1238,10 @@ async function openCamera(mode) {
     await openStream(mode);
     facing = mode;
     cameraEl.classList.add("open");
+    // 내비 필: 카메라 탭 활성
+    navCamBtn.classList.add("active");
+    navBagBtn.classList.remove("active");
+    closeDrawer_silent();
   } catch (err) {
     const name = err && err.name;
     if (name === "NotAllowedError") {
@@ -1332,8 +1275,10 @@ document.getElementById("flipCam").addEventListener("click", async () => {
 function closeCamera() {
   cameraEl.classList.remove("open");
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  // 내비 필: 파우치 탭 활성
+  navCamBtn.classList.remove("active");
+  navBagBtn.classList.add("active");
 }
-document.getElementById("closeCam").addEventListener("click", closeCamera);
 
 // ===== AI 누끼 =====
 const processingEl = document.getElementById("processing");
@@ -1773,12 +1718,25 @@ function openDrawer() {
 }
 function closeDrawer() {
   folderListEl.classList.remove("open");
-  navBagBtn.classList.remove("active");
-  navCamBtn.classList.add("active");
+  navBagBtn.classList.add("active");   // 파우치 세계(스티커 홈)에 있음
+  navCamBtn.classList.remove("active");
+}
+function closeDrawer_silent() {          // 카메라 탭이 필 상태를 직접 관리할 때
+  folderListEl.classList.remove("open");
 }
 
-navBagBtn.addEventListener("click", openDrawer);
-navCamBtn.addEventListener("click", closeDrawer);
+// 📷 카메라 탭: 선택되면 카메라 자동 작동
+navCamBtn.addEventListener("click", () => {
+  if (cameraEl.classList.contains("open")) return;
+  openCamera(facing);
+});
+// 👝 파우치 탭: 카메라 끄고, 스티커 홈이면 파우치 목록 열기
+navBagBtn.addEventListener("click", () => {
+  const camWasOpen = cameraEl.classList.contains("open");
+  if (camWasOpen) { closeCamera(); return; }   // 카메라 → 스티커 홈
+  if (folderListEl.classList.contains("open")) return;
+  openDrawer();                                 // 홈 → 파우치 목록
+});
 document.getElementById("closeList").addEventListener("click", closeDrawer);
 document.getElementById("newFolderBtn").addEventListener("click", () => openFolderEdit(null));
 
