@@ -109,8 +109,8 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: max(18px, env(safe-area-inset-top)) 30px 120px;
-    overflow-y: auto;
+    padding: max(18px, env(safe-area-inset-top)) 24px 110px;
+    overflow: hidden;
     transform: translateX(105%);
     transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
   }
@@ -132,6 +132,33 @@
   }
   .list-btns button:active { transform: scale(0.9); }
   .list-btns svg { display: block; }
+  #folderStage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    touch-action: none;
+  }
+  .folder-obj {
+    position: absolute;
+    top: 0; left: 0;
+    will-change: transform;
+    cursor: grab;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.18));
+  }
+  .folder-obj span {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 13px;
+    color: #55660e;
+    text-align: center;
+    padding: 0 12px;
+    pointer-events: none;
+  }
+  .folder-obj.current { filter: drop-shadow(0 0 8px rgba(162,220,0,0.9)) drop-shadow(0 3px 4px rgba(0,0,0,0.18)); }
+  .folder-obj.pressing { animation: pulse 0.9s ease-in-out infinite; }
 
   /* ===== 페이지 (편집) ===== */
   .page {
@@ -642,6 +669,23 @@
   <div class="list-head">
     <div class="logo">Pouch</div>
     <div class="list-btns">
+      <button id="folderViewBtn" aria-label="정렬 방식 전환">
+        <svg class="ic-grid" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="20" fill="white"/>
+          <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+          <rect x="11" y="11" width="7" height="7" rx="2" fill="black"/>
+          <rect x="22" y="11" width="7" height="7" rx="2" fill="black"/>
+          <rect x="11" y="22" width="7" height="7" rx="2" fill="black"/>
+          <rect x="22" y="22" width="7" height="7" rx="2" fill="black"/>
+        </svg>
+        <svg class="ic-free" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" hidden>
+          <rect width="40" height="40" rx="20" fill="white"/>
+          <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+          <circle cx="15" cy="14" r="3.5" fill="black"/>
+          <circle cx="27" cy="19" r="3.5" fill="black"/>
+          <circle cx="17" cy="27" r="3.5" fill="black"/>
+        </svg>
+      </button>
       <button id="newFolderBtn" aria-label="새 파우치">
         <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect width="40" height="40" rx="20" fill="white"/>
@@ -659,7 +703,7 @@
       </button>
     </div>
   </div>
-  <div id="folderGrid"></div>
+  <div id="folderStage"></div>
 </div>
 
 <div id="folderEdit" class="page">
@@ -893,6 +937,23 @@ function render() {
     const y = body.position.y - (eh || size) / 2;
     el.style.transform = `translate(${x}px, ${y}px) rotate(${body.angle}rad)`;
   }
+  // 내 파우치 스테이지 동기화
+  if (typeof fBodies !== "undefined" && folderListEl.classList.contains("open")) {
+    if (fMode === "grid") {
+      for (const { body } of fBodies) {
+        const t = fGridTargets.get(body.id);
+        if (!t) continue;
+        const p = body.position;
+        Body.setPosition(body, { x: p.x + (t.x - p.x) * 0.16, y: p.y + (t.y - p.y) * 0.16 });
+        Body.setAngle(body, body.angle * 0.84);
+      }
+    } else {
+      fRescue();
+    }
+    for (const { body, el, size } of fBodies) {
+      el.style.transform = `translate(${body.position.x - size / 2}px, ${body.position.y - size / 2}px) rotate(${body.angle}rad)`;
+    }
+  }
   requestAnimationFrame(render);
 }
 
@@ -1058,6 +1119,10 @@ function handleOrientation(e) {
   const gy = Math.max(-1, Math.min(1, e.beta / 40));
   engine.gravity.x = gx;
   engine.gravity.y = gy;
+  if (typeof fEngine !== "undefined" && fMode === "free") {
+    fEngine.gravity.x = gx;
+    fEngine.gravity.y = gy;
+  }
 }
 
 // 폰을 흔들면 스티커 대폭발 (버튼 없이!)
@@ -1069,7 +1134,11 @@ function handleMotion(e) {
   const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
   if (mag > 20 && performance.now() - lastShake > 900) {
     lastShake = performance.now();
-    shakeBurst();
+    if (folderListEl.classList.contains("open")) {
+      if (fMode === "free") fShakeBurst();
+    } else {
+      shakeBurst();
+    }
   }
 }
 
@@ -1332,53 +1401,216 @@ function switchFolder(id) {
   if (mode === "grid") enterGrid();
 }
 
-// ===== 내 파우치 페이지 (내비 필 전환) =====
+// ===== 내 파우치 페이지 (자유/격자 도형 스테이지) =====
 const folderListEl = document.getElementById("folderList");
-const folderGridEl = document.getElementById("folderGrid");
+const folderStage = document.getElementById("folderStage");
 const navCamBtn = document.getElementById("navCamBtn");
 const navBagBtn = document.getElementById("listBtn");
+const folderViewBtn = document.getElementById("folderViewBtn");
+
+// 폴더 전용 물리 엔진
+const fEngine = Engine.create();
+fEngine.gravity.y = 1;
+fEngine.positionIterations = 10;
+fEngine.velocityIterations = 8;
+Runner.run(Runner.create(), fEngine);
+
+let fMode = db.folderView || "free";   // "free" | "grid"
+let fBodies = [];   // { body, el, size, folderId }
+let fWalls = [];
+const fGridTargets = new Map();
+
+function fStageSize() {
+  return { w: folderStage.clientWidth, h: folderStage.clientHeight };
+}
+
+function buildFWalls() {
+  fWalls.forEach(w => Composite.remove(fEngine.world, w));
+  const { w, h } = fStageSize();
+  const t = 120;
+  fWalls = [
+    Bodies.rectangle(w / 2, -t / 2 + 4, w * 2, t, { isStatic: true }),
+    Bodies.rectangle(w / 2, h + t / 2 - 4, w * 2, t, { isStatic: true }),
+    Bodies.rectangle(-t / 2 + 4, h / 2, t, h * 2, { isStatic: true }),
+    Bodies.rectangle(w + t / 2 - 4, h / 2, t, h * 2, { isStatic: true }),
+  ];
+  Composite.add(fEngine.world, fWalls);
+}
+
+function clearFolderObjects() {
+  for (const { body, el } of fBodies) {
+    Composite.remove(fEngine.world, body);
+    el.remove();
+  }
+  fBodies = [];
+}
+
+function buildFolderObjects() {
+  clearFolderObjects();
+  buildFWalls();
+  const { w, h } = fStageSize();
+  const SIZE = 108;
+  db.folders.forEach((f, i) => {
+    const el = document.createElement("div");
+    el.className = "folder-obj" + (f.id === db.current ? " current" : "");
+    el.style.width = SIZE + "px";
+    el.style.height = SIZE + "px";
+    el.innerHTML = shapeSVG(f.shape, f.color, SIZE) + `<span>${f.name}</span>`;
+    folderStage.appendChild(el);
+    const x = 70 + Math.random() * Math.max(1, w - 140);
+    const y = fMode === "free" ? (h - 90 - Math.random() * 120) : 80;
+    const body = Bodies.circle(x, y, SIZE / 2 - 4, {
+      restitution: 0.5, friction: 0.06, frictionAir: 0.02, density: 0.0015,
+    });
+    Body.setAngle(body, (Math.random() - 0.5) * 0.5);
+    Composite.add(fEngine.world, body);
+    fBodies.push({ body, el, size: SIZE, folderId: f.id });
+  });
+  if (fMode === "grid") enterFGrid();
+  updateViewBtn();
+}
+
+function enterFGrid() {
+  const { w } = fStageSize();
+  const cell = 112, gap = 8;
+  const cols = Math.max(1, Math.floor((w + gap) / (cell + gap)));
+  const x0 = (w - (cols * cell + (cols - 1) * gap)) / 2;
+  fGridTargets.clear();
+  fBodies.forEach((item, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    fGridTargets.set(item.body.id, {
+      x: x0 + col * (cell + gap) + cell / 2,
+      y: 70 + row * (cell + gap + 14) + cell / 2,
+    });
+    Body.setStatic(item.body, true);
+  });
+}
+function exitFGrid() {
+  fGridTargets.clear();
+  for (const { body } of fBodies) Body.setStatic(body, false);
+}
+
+function updateViewBtn() {
+  // 버튼엔 "다음에 전환될 모드" 아이콘 표시
+  folderViewBtn.querySelector(".ic-grid").hidden = (fMode === "grid");
+  folderViewBtn.querySelector(".ic-free").hidden = (fMode === "free");
+}
+
+folderViewBtn.addEventListener("click", () => {
+  fMode = fMode === "free" ? "grid" : "free";
+  db.folderView = fMode;
+  saveDB();
+  if (fMode === "grid") { fEngine.gravity.x = 0; fEngine.gravity.y = 1; enterFGrid(); }
+  else exitFGrid();
+  updateViewBtn();
+});
+
+function fRescue() {
+  const { w, h } = fStageSize();
+  for (const { body, size } of fBodies) {
+    const r = size / 2;
+    const { x, y } = body.position;
+    if (x < -r || x > w + r || y < -r || y > h + r) {
+      Body.setPosition(body, {
+        x: Math.min(Math.max(x, r + 4), w - r - 4),
+        y: Math.min(Math.max(y, r + 4), h - r - 4),
+      });
+      Body.setVelocity(body, { x: 0, y: 0 });
+    }
+    const v = body.velocity;
+    const sp = Math.hypot(v.x, v.y);
+    if (sp > MAX_SPEED) {
+      const k = MAX_SPEED / sp;
+      Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    }
+  }
+}
+
+function fShakeBurst() {
+  for (const { body } of fBodies) {
+    Body.setVelocity(body, { x: (Math.random() - 0.5) * 28, y: -Math.random() * 20 - 5 });
+    Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.5);
+  }
+}
+
+// 스테이지 터치: 짧게 탭=선택, 드래그=던지기(자유), 길게=편집
+let fDrag = null, fPress = null;
+folderStage.addEventListener("pointerdown", (e) => {
+  const rect = folderStage.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  let best = null, bestD = 1e9;
+  for (const item of fBodies) {
+    const d = Math.hypot(item.body.position.x - px, item.body.position.y - py);
+    if (d < item.size * 0.65 && d < bestD) { best = item; bestD = d; }
+  }
+  if (!best) return;
+  fDrag = { item: best, lastX: px, lastY: py, lastT: performance.now(), moved: false, wasStatic: best.body.isStatic };
+  if (fMode === "free") Body.setStatic(best.body, true);
+  folderStage.setPointerCapture(e.pointerId);
+  best.el.classList.add("pressing");
+  fPress = setTimeout(() => {
+    if (fDrag && !fDrag.moved) {
+      const id = fDrag.item.folderId;
+      fDrag.item.el.classList.remove("pressing");
+      if (fMode === "free" && !fDrag.wasStatic) Body.setStatic(fDrag.item.body, false);
+      fDrag = null;
+      if (navigator.vibrate) navigator.vibrate(30);
+      openFolderEdit(id);   // 길게 누르면 편집
+    }
+  }, 550);
+});
+folderStage.addEventListener("pointermove", (e) => {
+  if (!fDrag) return;
+  const rect = folderStage.getBoundingClientRect();
+  const px = e.clientX - rect.left, py = e.clientY - rect.top;
+  if (!fDrag.moved && Math.hypot(px - fDrag.lastX, py - fDrag.lastY) > 8) {
+    fDrag.moved = true;
+    clearTimeout(fPress);
+    fDrag.item.el.classList.remove("pressing");
+  }
+  if (fDrag.moved && fMode === "free") {
+    Body.setPosition(fDrag.item.body, { x: px, y: py });
+    const now = performance.now();
+    const dt = Math.max(now - fDrag.lastT, 1);
+    fDrag.vx = (px - fDrag.lastX) / dt * 16;
+    fDrag.vy = (py - fDrag.lastY) / dt * 16;
+    fDrag.lastX = px; fDrag.lastY = py; fDrag.lastT = now;
+  }
+});
+function fEndDrag() {
+  clearTimeout(fPress);
+  if (!fDrag) return;
+  const { item, moved, vx = 0, vy = 0, wasStatic } = fDrag;
+  item.el.classList.remove("pressing");
+  if (fMode === "free") {
+    Body.setStatic(item.body, false);
+    if (moved) Body.setVelocity(item.body, {
+      x: Math.max(-25, Math.min(25, vx)), y: Math.max(-25, Math.min(25, vy)),
+    });
+  } else if (wasStatic) {
+    Body.setStatic(item.body, true);
+  }
+  const tapped = !moved;
+  const fid = item.folderId;
+  fDrag = null;
+  if (tapped) {          // 짧은 탭 = 파우치 선택 후 홈으로
+    switchFolder(fid);
+    closeDrawer();
+  }
+}
+folderStage.addEventListener("pointerup", fEndDrag);
+folderStage.addEventListener("pointercancel", fEndDrag);
 
 function openDrawer() {
-  renderFolderList();
   folderListEl.classList.add("open");
   navBagBtn.classList.add("active");
   navCamBtn.classList.remove("active");
+  requestAnimationFrame(buildFolderObjects);  // 레이아웃 잡힌 뒤 배치
 }
 function closeDrawer() {
   folderListEl.classList.remove("open");
   navBagBtn.classList.remove("active");
   navCamBtn.classList.add("active");
-}
-
-function renderFolderList() {
-  folderGridEl.innerHTML = "";
-  db.folders.forEach(f => {
-    const card = document.createElement("div");
-    card.className = "folder-card" + (f.id === db.current ? " current" : "");
-    card.innerHTML = `
-      ${shapeSVG(f.shape, f.color, 54)}
-      <div class="finfo">
-        <div class="fname">${f.name}</div>
-        <div class="fcount">스티커 ${f.stickers.length}개</div>
-      </div>
-      <button class="edit-btn" aria-label="편집">✏️</button>
-    `;
-    card.addEventListener("click", () => {
-      switchFolder(f.id);
-      closeDrawer();  // 선택하면 파우치 홈으로
-    });
-    card.querySelector(".edit-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      openFolderEdit(f.id);
-    });
-    folderGridEl.appendChild(card);
-  });
-  // 새 파우치 카드
-  const add = document.createElement("div");
-  add.className = "folder-card new-card";
-  add.innerHTML = `<div class="plus">＋</div><div>새 파우치</div>`;
-  add.addEventListener("click", () => openFolderEdit(null));
-  folderGridEl.appendChild(add);
 }
 
 navBagBtn.addEventListener("click", openDrawer);
@@ -1444,7 +1676,7 @@ document.getElementById("editSave").addEventListener("click", () => {
     switchFolder(f.id);  // 새 파우치로 바로 이동 (saveDB 포함)
   }
   folderEditEl.classList.remove("open");
-  renderFolderList();
+  buildFolderObjects();
 });
 
 folderDeleteEl.addEventListener("click", () => {
@@ -1455,13 +1687,14 @@ folderDeleteEl.addEventListener("click", () => {
   if (db.current === editingId) switchFolder(db.folders[0].id);
   else saveDB();
   folderEditEl.classList.remove("open");
-  renderFolderList();
+  buildFolderObjects();
 });
 
 // ===== 시작 =====
 window.addEventListener("resize", () => {
   buildWalls();
   if (mode === "grid") enterGrid(); else rescue();
+  if (folderListEl.classList.contains("open")) buildFolderObjects();
 });
 buildWalls();
 spawnStickers();
