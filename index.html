@@ -479,6 +479,88 @@
     font-size: 19px;
     padding: 0;
   }
+  /* ===== 채집 검수 화면 ===== */
+  #review {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: #000;
+    border: 4px solid #a2dc00;
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  #review.open { display: block; }
+  #reviewCanvas {
+    position: absolute;
+    top: 42%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 78vw;
+    max-height: 48vh;
+    touch-action: none;
+    filter:
+      drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff)
+      drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff);
+  }
+  #review.erasing #reviewCanvas { cursor: crosshair; }
+  .review-ui {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: max(30px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  #reviewEraser {
+    width: 56px; height: 56px;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  #reviewEraser.on { background: #a2dc00; color: #111; }
+  .review-row {
+    display: flex;
+    align-items: center;
+    gap: 56px;
+  }
+  #reviewRetake {
+    width: 72px; height: 72px;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+    border: none;
+    color: #fff;
+    font-size: 30px;
+    padding: 0;
+  }
+  #reviewDone {
+    width: 84px; height: 84px;
+    flex: none;
+    border-radius: 50%;
+    background: #a2dc00;
+    border: none;
+    font-size: 34px;
+    padding: 0;
+    transition: transform 0.1s;
+  }
+  #reviewDone:active { transform: scale(0.92); }
+  .review-hint {
+    position: absolute;
+    top: max(22px, env(safe-area-inset-top));
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    pointer-events: none;
+  }
+
   /* 촬영 플래시 */
   #flash {
     position: absolute;
@@ -588,6 +670,18 @@
 </style>
 </head>
 <body>
+<div id="review">
+  <div class="review-hint">채집물을 확인하세요 · 지우개로 다듬을 수 있어요</div>
+  <canvas id="reviewCanvas"></canvas>
+  <div class="review-ui">
+    <button id="reviewEraser" aria-label="지우개">🧹</button>
+    <div class="review-row">
+      <button id="reviewRetake" aria-label="다시 촬영">↺</button>
+      <button id="reviewDone" aria-label="완료">✋</button>
+    </div>
+  </div>
+</div>
+
 <div id="processing">
   <div class="scissors">✂️</div>
   <p>누끼 따는 중...</p>
@@ -1307,9 +1401,79 @@ async function processAndCollect(cap) {
     alert("누끼에 실패해서 원본으로 채집했어요 🥲 (네트워크를 확인해보세요)");
   }
   processingEl.classList.remove("open");
+  openReview(item);   // 저장 전에 검수 화면으로!
+}
+
+// ===== 채집 검수 (지우개·다시촬영·완료) =====
+const reviewEl = document.getElementById("review");
+const rCanvas = document.getElementById("reviewCanvas");
+const rCtx = rCanvas.getContext("2d");
+const eraserBtn = document.getElementById("reviewEraser");
+let eraserOn = false;
+
+function openReview(item) {
+  rCanvas.width = item.w;
+  rCanvas.height = item.h;
+  const img = new Image();
+  img.onload = () => {
+    rCtx.clearRect(0, 0, rCanvas.width, rCanvas.height);
+    rCtx.drawImage(img, 0, 0);
+  };
+  img.src = item.url;
+  eraserOn = false;
+  eraserBtn.classList.remove("on");
+  reviewEl.classList.remove("erasing");
+  reviewEl.classList.add("open");
+}
+
+eraserBtn.addEventListener("click", () => {
+  eraserOn = !eraserOn;
+  eraserBtn.classList.toggle("on", eraserOn);
+  reviewEl.classList.toggle("erasing", eraserOn);
+});
+
+// 지우개: 캔버스 문지르기
+let erasing = false;
+function eraseAt(e) {
+  const rect = rCanvas.getBoundingClientRect();
+  const kx = rCanvas.width / rect.width;
+  const ky = rCanvas.height / rect.height;
+  const x = (e.clientX - rect.left) * kx;
+  const y = (e.clientY - rect.top) * ky;
+  const r = 16 * kx;  // 화면상 약 16px 브러시
+  rCtx.globalCompositeOperation = "destination-out";
+  rCtx.beginPath();
+  rCtx.arc(x, y, r, 0, Math.PI * 2);
+  rCtx.fill();
+  rCtx.globalCompositeOperation = "source-over";
+}
+rCanvas.addEventListener("pointerdown", (e) => {
+  if (!eraserOn) return;
+  erasing = true;
+  rCanvas.setPointerCapture(e.pointerId);
+  eraseAt(e);
+});
+rCanvas.addEventListener("pointermove", (e) => { if (erasing) eraseAt(e); });
+rCanvas.addEventListener("pointerup", () => { erasing = false; });
+rCanvas.addEventListener("pointercancel", () => { erasing = false; });
+
+// 다시 촬영
+document.getElementById("reviewRetake").addEventListener("click", () => {
+  reviewEl.classList.remove("open");
+  openCamera(facing);
+});
+
+// 완료: 지운 결과를 다시 트리밍해서 저장·투하
+document.getElementById("reviewDone").addEventListener("click", async () => {
+  const img = new Image();
+  await new Promise(r => { img.onload = r; img.src = rCanvas.toDataURL("image/png"); });
+  const item = trimAndShrink(img);
+  if (!item) { alert("전부 지워졌어요! 조금만 남겨주세요 😅"); return; }
+  reviewEl.classList.remove("open");
   saveToCollection(item);
   spawnPhotoSticker(item, true, loadCollection().length - 1);
-}
+  if (navigator.vibrate) navigator.vibrate(25);
+});
 
 document.getElementById("shutter").addEventListener("click", async () => {
   // 카메라가 아직 예열 중이면 최대 1.5초 대기
