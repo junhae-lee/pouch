@@ -27,7 +27,7 @@
 
   header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
   }
   .logo {
@@ -37,10 +37,42 @@
     color: #d6ff4b;
     font-style: italic;
   }
-  .hint {
-    font-size: 12px;
-    color: #8a8a85;
+  #alignBtn {
+    flex: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.1);
+    color: #f2f2ee;
+    border: 1px solid rgba(255,255,255,0.2);
   }
+  #alignBtn.grid {
+    background: rgba(214,255,75,0.15);
+    color: #d6ff4b;
+    border-color: rgba(214,255,75,0.5);
+  }
+
+  /* ===== 누끼 처리중 오버레이 ===== */
+  #processing {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(13,13,15,0.88);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+  }
+  #processing.open { display: flex; }
+  #processing .scissors { font-size: 52px; animation: snip 0.9s ease-in-out infinite; }
+  @keyframes snip {
+    0%, 100% { transform: rotate(-12deg); }
+    50% { transform: rotate(12deg) scale(1.1); }
+  }
+  #processing p { font-size: 16px; font-weight: 700; color: #d6ff4b; }
+  #processing small { color: #8a8a85; font-size: 12px; padding: 0 32px; }
 
   /* ===== 투명 파우치 ===== */
   #pouch {
@@ -100,14 +132,11 @@
       drop-shadow(0 -2px 0 #fff);
   }
   .sticker.dragging { cursor: grabbing; }
-  /* 카메라로 채집한 사진 스티커 */
+  /* 카메라로 채집한 누끼 스티커 — 테두리가 피사체 윤곽선을 따라감 */
   .sticker.photo {
-    border-radius: 50%;
-    border: 3px solid #fff;
-    background-size: cover;
+    background-size: contain;
+    background-repeat: no-repeat;
     background-position: center;
-    filter: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.4);
   }
 
   footer {
@@ -220,6 +249,12 @@
 </style>
 </head>
 <body>
+<div id="processing">
+  <div class="scissors">✂️</div>
+  <p>누끼 따는 중...</p>
+  <small>첫 채집은 AI 모델을 내려받느라 시간이 걸릴 수 있어요 (한 번만!)</small>
+</div>
+
 <div id="rotateGuard">
   <div class="phone">📱</div>
   <p>세로로 돌려주세요!</p>
@@ -229,7 +264,7 @@
 <div id="app">
   <header>
     <div class="logo">Pouch!</div>
-    <div class="hint">폰을 기울이거나, 스티커를 던져보세요</div>
+    <button id="alignBtn">🧲 정렬</button>
   </header>
 
   <div id="pouch"></div>
@@ -321,31 +356,35 @@ function spawnStickers() {
   });
 }
 
-// 카메라로 채집한 사진 스티커
-function spawnPhotoSticker(dataURL, dropFromTop) {
+// 카메라로 채집한 스티커 (누끼 PNG, 원본 비율 유지)
+function spawnPhotoSticker(item, dropFromTop) {
   const { w } = pouchSize();
-  const size = 92;
+  const MAX = 110;
+  const k = MAX / Math.max(item.w, item.h);
+  const ew = Math.round(item.w * k), eh = Math.round(item.h * k);
+  const size = Math.max(ew, eh);
   const el = document.createElement("div");
   el.className = "sticker photo";
-  el.style.width = size + "px";
-  el.style.height = size + "px";
-  el.style.backgroundImage = `url(${dataURL})`;
+  el.style.width = ew + "px";
+  el.style.height = eh + "px";
+  el.style.backgroundImage = `url(${item.url})`;
   pouch.appendChild(el);
-  const x = 50 + Math.random() * (w - 100);
+  const x = 60 + Math.random() * (w - 120);
   const y = dropFromTop ? 60 : 120 + Math.random() * 100;
-  bodies.push({ body: makeBody(x, y, size), el, size });
+  bodies.push({ body: makeBody(x, y, size), el, size, ew, eh });
+  if (mode === "grid") enterGrid();  // 정렬 모드 중이면 새 스티커도 줄맞춤
 }
 
 // ===== 보관함 (브라우저 저장소) =====
-const STORE_KEY = "pouch_stickers_v1";
+const STORE_KEY = "pouch_stickers_v2";
 
 function loadCollection() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
   catch { return []; }
 }
-function saveToCollection(dataURL) {
+function saveToCollection(item) {
   const list = loadCollection();
-  list.push(dataURL);
+  list.push(item);
   try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
   catch { alert("보관함이 가득 찼어요! (저장 공간 부족)"); }
 }
@@ -375,12 +414,62 @@ function rescue() {
   }
 }
 
+// ===== 정렬 모드 (자유 ↔ 격자) =====
+let mode = "free";
+const gridTargets = new Map();
+const alignBtn = document.getElementById("alignBtn");
+
+function enterGrid() {
+  const { w } = pouchSize();
+  const cell = 112, gap = 10, margin = 22;
+  const cols = Math.max(1, Math.floor((w - margin * 2 + gap) / (cell + gap)));
+  gridTargets.clear();
+  bodies.forEach((item, i) => {
+    const col = i % cols, row = Math.floor(i / cols);
+    gridTargets.set(item.body.id, {
+      x: margin + col * (cell + gap) + cell / 2,
+      y: margin + 24 + row * (cell + gap) + cell / 2,
+    });
+    Body.setStatic(item.body, true);
+  });
+}
+
+function exitGrid() {
+  gridTargets.clear();
+  for (const { body } of bodies) Body.setStatic(body, false);
+}
+
+alignBtn.addEventListener("click", () => {
+  if (mode === "free") {
+    mode = "grid";
+    enterGrid();
+    alignBtn.textContent = "🌀 자유";
+    alignBtn.classList.add("grid");
+  } else {
+    mode = "free";
+    exitGrid();
+    alignBtn.textContent = "🧲 정렬";
+    alignBtn.classList.remove("grid");
+  }
+});
+
 // ===== 화면 동기화 =====
 function render() {
-  rescue();
-  for (const { body, el, size } of bodies) {
-    const x = body.position.x - size / 2;
-    const y = body.position.y - size / 2;
+  if (mode === "grid") {
+    // 격자 목표 지점으로 스르륵 이동
+    for (const { body } of bodies) {
+      const t = gridTargets.get(body.id);
+      if (!t) continue;
+      const p = body.position;
+      Body.setPosition(body, { x: p.x + (t.x - p.x) * 0.16, y: p.y + (t.y - p.y) * 0.16 });
+      Body.setAngle(body, body.angle * 0.84);  // 각도도 반듯하게
+    }
+  } else {
+    rescue();
+  }
+  for (const { body, el, size, ew, eh } of bodies) {
+    const x = body.position.x - (ew || size) / 2;
+    const y = body.position.y - (eh || size) / 2;
     el.style.transform = `translate(${x}px, ${y}px) rotate(${body.angle}rad)`;
   }
   requestAnimationFrame(render);
@@ -390,6 +479,7 @@ function render() {
 let drag = null; // { item, lastX, lastY, lastT }
 
 pouch.addEventListener("pointerdown", (e) => {
+  if (mode === "grid") return;  // 정렬 모드에선 드래그 잠금
   const rect = pouch.getBoundingClientRect();
   const px = e.clientX - rect.left;
   const py = e.clientY - rect.top;
@@ -467,6 +557,7 @@ tiltBtn.addEventListener("click", async () => {
 
 // ===== 흔들기 버튼 =====
 document.getElementById("shakeBtn").addEventListener("click", () => {
+  if (mode === "grid") alignBtn.click();  // 정렬 풀고 흔들기!
   for (const { body } of bodies) {
     Body.setVelocity(body, {
       x: (Math.random() - 0.5) * 30,
@@ -500,25 +591,91 @@ function closeCamera() {
 }
 document.getElementById("closeCam").addEventListener("click", closeCamera);
 
-document.getElementById("shutter").addEventListener("click", () => {
+// ===== AI 누끼 =====
+const processingEl = document.getElementById("processing");
+let removeBackgroundFn = null;
+
+async function getNukkiEngine() {
+  if (!removeBackgroundFn) {
+    const mod = await import("https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.5/+esm");
+    removeBackgroundFn = mod.removeBackground;
+  }
+  return removeBackgroundFn;
+}
+
+// 투명 여백을 잘라내고 알맞은 크기로 축소
+function trimAndShrink(img) {
+  const c = document.createElement("canvas");
+  c.width = img.width; c.height = img.height;
+  const ctx = c.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+  const d = ctx.getImageData(0, 0, c.width, c.height).data;
+  let minX = c.width, minY = c.height, maxX = 0, maxY = 0;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      if (d[(y * c.width + x) * 4 + 3] > 20) {  // 알파값 있는 픽셀
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX <= minX || maxY <= minY) return null;  // 전부 투명 = 누끼 실패
+  const bw = maxX - minX + 1, bh = maxY - minY + 1;
+  const k = Math.min(1, 220 / Math.max(bw, bh));
+  const out = document.createElement("canvas");
+  out.width = Math.round(bw * k); out.height = Math.round(bh * k);
+  out.getContext("2d").drawImage(c, minX, minY, bw, bh, 0, 0, out.width, out.height);
+  return { url: out.toDataURL("image/png"), w: out.width, h: out.height };
+}
+
+document.getElementById("shutter").addEventListener("click", async () => {
   const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
   if (!vw || !vh) return;
-  // 중앙 정사각형으로 잘라 240px로 축소 저장
+  // 중앙 정사각형 512px로 캡처
   const s = Math.min(vw, vh);
-  const c = document.createElement("canvas");
-  c.width = 240; c.height = 240;
-  c.getContext("2d").drawImage(videoEl, (vw - s) / 2, (vh - s) / 2, s, s, 0, 0, 240, 240);
-  const dataURL = c.toDataURL("image/jpeg", 0.82);
-  saveToCollection(dataURL);
-  spawnPhotoSticker(dataURL, true);  // 파우치 위에서 툭 떨어짐
+  const cap = document.createElement("canvas");
+  cap.width = 512; cap.height = 512;
+  cap.getContext("2d").drawImage(videoEl, (vw - s) / 2, (vh - s) / 2, s, s, 0, 0, 512, 512);
   closeCamera();
+  processingEl.classList.add("open");
+
+  let item = null;
+  try {
+    const removeBackground = await getNukkiEngine();
+    const blob = await new Promise(r => cap.toBlob(r, "image/png"));
+    const cutBlob = await removeBackground(blob);
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res; img.onerror = rej;
+      img.src = URL.createObjectURL(cutBlob);
+    });
+    item = trimAndShrink(img);
+  } catch (err) {
+    item = null;  // 누끼 실패 → 폴백
+  }
+  if (!item) {
+    // 폴백: 누끼 없이 원본 정사각으로 채집
+    const fb = document.createElement("canvas");
+    fb.width = 200; fb.height = 200;
+    fb.getContext("2d").drawImage(cap, 0, 0, 200, 200);
+    item = { url: fb.toDataURL("image/jpeg", 0.82), w: 200, h: 200 };
+    alert("누끼에 실패해서 원본으로 채집했어요 🥲 (네트워크를 확인해보세요)");
+  }
+  processingEl.classList.remove("open");
+  saveToCollection(item);
+  spawnPhotoSticker(item, true);
 });
 
 // ===== 시작 =====
-window.addEventListener("resize", () => { buildWalls(); rescue(); });
+window.addEventListener("resize", () => {
+  buildWalls();
+  if (mode === "grid") enterGrid(); else rescue();
+});
 buildWalls();
 spawnStickers();
-loadCollection().forEach(url => spawnPhotoSticker(url, false));  // 채집품 복원
+loadCollection().forEach(item => spawnPhotoSticker(item, false));  // 채집품 복원
 Runner.run(Runner.create(), engine);
 render();
 </script>
