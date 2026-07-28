@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Pouch! — 파우치 프로토타입</title>
+<title>Pouch!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&display=swap" rel="stylesheet">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -18,38 +20,48 @@
   }
 
   #app {
+    position: relative;
     height: 100%;
-    display: flex;
-    flex-direction: column;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
-    gap: 12px;
+    border: 4px solid #a2dc00;
+    border-radius: 24px;
+    overflow: hidden;
   }
 
   header {
+    position: absolute;
+    top: max(18px, env(safe-area-inset-top));
+    left: 20px;
+    right: 14px;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    pointer-events: none;
   }
+  header button, header .title-group { pointer-events: auto; }
   .logo {
-    font-size: 28px;
+    font-family: "Baloo 2", "Noto Sans KR", sans-serif;
+    font-size: 34px;
     font-weight: 800;
-    letter-spacing: -0.5px;
-    color: #1c1c1a;
-    font-style: italic;
+    letter-spacing: 0;
+    color: #a2dc00;
+    line-height: 1;
   }
   #alignBtn {
     flex: none;
-    padding: 8px 16px;
+    padding: 9px 16px;
     border-radius: 999px;
     font-size: 14px;
-    background: rgba(0,0,0,0.05);
+    font-weight: 800;
+    background: #ffffff;
     color: #1c1c1a;
-    border: 1px solid rgba(0,0,0,0.15);
+    border: 2px solid #a2dc00;
+    transition: background 0.15s, color 0.15s;
   }
   #alignBtn.grid {
-    background: rgba(214,255,75,0.45);
-    color: #4a570d;
-    border-color: #b7d63c;
+    background: #a2dc00;
+    color: #ffffff;
+    border-color: #a2dc00;
   }
   .title-group { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
   .folder-name {
@@ -65,11 +77,12 @@
     width: 40px; height: 40px;
     border-radius: 50%;
     font-size: 17px;
-    background: rgba(0,0,0,0.05);
-    color: #1c1c1a;
-    border: 1px solid rgba(0,0,0,0.15);
+    background: #ffffff;
+    border: 2px solid #a2dc00;
     padding: 0;
+    transition: background 0.15s;
   }
+  #listBtn:active { background: rgba(162,220,0,0.25); }
 
   /* ===== 우측 서랍 (파우치 목록) ===== */
   #drawerDim {
@@ -139,7 +152,7 @@
     color: #1c1c1a;
     border: 1px solid rgba(0,0,0,0.15);
   }
-  .pill-btn.save { background: #d6ff4b; color: #111; border: none; font-weight: 800; }
+  .pill-btn.save { background: #a2dc00; color: #fff; border: none; font-weight: 800; }
 
   /* 파우치 목록 (서랍 안 1열) */
   #folderGrid {
@@ -160,7 +173,7 @@
     cursor: pointer;
   }
   .folder-card .finfo { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .folder-card.current { border-color: #b7d63c; background: rgba(214,255,75,0.28); }
+  .folder-card.current { border-color: #a2dc00; background: rgba(162,220,0,0.16); }
   .folder-card .fname { font-size: 14px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .folder-card .fcount { font-size: 11px; color: #8a8a85; }
   .folder-card .edit-btn {
@@ -185,7 +198,7 @@
     font-weight: 700;
     gap: 10px;
   }
-  .folder-card.new-card .plus { font-size: 22px; color: #d6ff4b; }
+  .folder-card.new-card .plus { font-size: 22px; color: #a2dc00; }
 
   /* 편집 페이지 */
   #editPreview { display: grid; place-items: center; padding: 8px 0; }
@@ -201,7 +214,7 @@
     text-align: center;
     outline: none;
   }
-  #editName:focus { border-color: #b7d63c; }
+  #editName:focus { border-color: #a2dc00; }
   .opt-label { font-size: 13px; color: #8a8a85; font-weight: 700; }
   .opts {
     display: grid;
@@ -217,7 +230,7 @@
     border: 1.5px solid transparent;
     padding: 0;
   }
-  .opt.selected { border-color: #a9c62f; background: rgba(214,255,75,0.28); }
+  .opt.selected { border-color: #a2dc00; background: rgba(162,220,0,0.16); }
   .opt .dot { width: 34px; height: 34px; border-radius: 50%; }
   #folderDelete {
     margin-top: auto;
@@ -249,49 +262,14 @@
     0%, 100% { transform: rotate(-12deg); }
     50% { transform: rotate(12deg) scale(1.1); }
   }
-  #processing p { font-size: 16px; font-weight: 700; color: #6b7f13; }
+  #processing p { font-size: 16px; font-weight: 700; color: #7fae00; }
   #processing small { color: #8a8a85; font-size: 12px; padding: 0 32px; }
 
-  /* ===== 투명 파우치 ===== */
+  /* ===== 파우치 (화면 전체) ===== */
   #pouch {
-    position: relative;
-    flex: 1;
-    border-radius: 28px;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
-    background: linear-gradient(155deg, rgba(255,255,255,0.85), rgba(255,255,255,0.45) 45%, rgba(255,255,255,0.7));
-    border: 1.5px solid rgba(0,0,0,0.16);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.9),
-      inset 0 -20px 40px rgba(0,0,0,0.05),
-      0 16px 44px rgba(0,0,0,0.12);
-  }
-  /* 비닐 광택 하이라이트 */
-  #pouch::before {
-    content: "";
-    position: absolute;
-    top: -30%;
-    left: -20%;
-    width: 70%;
-    height: 80%;
-    background: linear-gradient(120deg, rgba(255,255,255,0.9), rgba(255,255,255,0) 60%);
-    transform: rotate(-8deg);
-    pointer-events: none;
-    z-index: 5;
-  }
-  /* 파우치 지퍼 라인 */
-  #pouch::after {
-    content: "";
-    position: absolute;
-    top: 10px;
-    left: 16px;
-    right: 16px;
-    height: 6px;
-    border-radius: 3px;
-    background: repeating-linear-gradient(90deg,
-      rgba(0,0,0,0.22) 0 8px,
-      rgba(0,0,0,0.06) 8px 16px);
-    pointer-events: none;
-    z-index: 5;
   }
 
   .sticker {
@@ -318,10 +296,6 @@
     background-position: center;
   }
 
-  footer {
-    display: flex;
-    gap: 10px;
-  }
   button {
     flex: 1;
     padding: 14px 0;
@@ -334,65 +308,24 @@
     transition: transform 0.08s;
   }
   button:active { transform: scale(0.96); }
-  #shakeBtn {
-    background: #d6ff4b;
-    color: #111;
-  }
-  #tiltBtn {
-    background: rgba(0,0,0,0.05);
-    color: #1c1c1a;
-    border: 1px solid rgba(0,0,0,0.15);
-  }
-  #tiltBtn.on {
-    background: rgba(214,255,75,0.45);
-    color: #4a570d;
-    border-color: #b7d63c;
-  }
-
-  /* ===== 카메라 화면 ===== */
-  #camera {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    background: #000;
-  }
-  #camera.open { display: block; }
-  #camera video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  #camera .cam-ui {
+  /* ===== 촬영 버튼 (하단 중앙) ===== */
+  #shutterMain {
     position: absolute;
-    left: 0; right: 0;
-    bottom: max(28px, env(safe-area-inset-bottom));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  #shutter {
-    width: 74px; height: 74px;
-    flex: none;
-    border-radius: 50%;
-    background: #fff;
-    border: 5px solid rgba(255,255,255,0.4);
-    background-clip: padding-box;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 75px; height: 75px;
+    z-index: 10;
+    background: none;
+    border: none;
     padding: 0;
-  }
-  #closeCam {
-    position: absolute;
-    top: max(16px, env(safe-area-inset-top));
-    right: 16px;
-    width: 44px; height: 44px;
     flex: none;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.5);
-    color: #fff;
-    font-size: 20px;
-    padding: 0;
+    transition: transform 0.1s;
   }
-  #camBtn { flex: 0.7; background: rgba(0,0,0,0.05); color: #1c1c1a; border: 1px solid rgba(0,0,0,0.15); }
+  #shutterMain svg { display: block; }
+  #shutterMain .inner { transition: fill 0.12s; }
+  #shutterMain.pressed { transform: translateX(-50%) scale(0.9); }
+  #shutterMain.pressed .inner { fill: #7fae00; }
   #galleryBtn {
     position: absolute;
     left: 24px;
@@ -438,16 +371,16 @@
   #resizePanel label { font-size: 14px; font-weight: 700; flex: none; }
   #sizeSlider {
     flex: 1;
-    accent-color: #d6ff4b;
+    accent-color: #a2dc00;
     height: 28px;
   }
-  #sizeVal { flex: none; width: 48px; text-align: right; font-size: 13px; color: #6b7f13; font-weight: 700; }
+  #sizeVal { flex: none; width: 48px; text-align: right; font-size: 13px; color: #7fae00; font-weight: 700; }
   #resizeDone {
     margin-top: 12px;
     width: 100%;
     padding: 12px 0;
-    background: #d6ff4b;
-    color: #111;
+    background: #a2dc00;
+    color: #fff;
   }
 
   /* ===== 가로모드 안내 오버레이 ===== */
@@ -474,7 +407,7 @@
   #rotateGuard p {
     font-size: 16px;
     font-weight: 700;
-    color: #6b7f13;
+    color: #7fae00;
   }
   #rotateGuard small { color: #8a8a85; font-size: 13px; }
   /* 폰·태블릿 크기에서 가로로 돌리면 발동 (높이가 낮아진 상태) */
@@ -497,6 +430,8 @@
 </div>
 
 <div id="app">
+  <div id="pouch"></div>
+
   <header>
     <div class="title-group">
       <div class="logo">Pouch!</div>
@@ -508,13 +443,12 @@
     </div>
   </header>
 
-  <div id="pouch"></div>
-
-  <footer>
-    <button id="camBtn">📸 채집</button>
-    <button id="tiltBtn">📱 기울기 켜기</button>
-    <button id="shakeBtn">🫨 흔들기</button>
-  </footer>
+  <button id="shutterMain" aria-label="촬영">
+    <svg width="75" height="75" viewBox="0 0 75 75" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.5" y="1.5" width="72" height="72" rx="36" stroke="#A2DC00" stroke-width="3"/>
+      <circle class="inner" cx="37.4643" cy="37.4643" r="29.4643" fill="#A2DC00"/>
+    </svg>
+  </button>
 </div>
 
 <div id="camera">
@@ -676,7 +610,7 @@ function loadDB() {
   let old = [];
   try { old = JSON.parse(localStorage.getItem("pouch_stickers_v2")) || []; } catch {}
   const d = {
-    folders: [{ id: "f" + Date.now(), name: "기본 파우치", shape: "square", color: "#d6ff4b", stickers: old }],
+    folders: [{ id: "f" + Date.now(), name: "기본 파우치", shape: "square", color: "#a2dc00", stickers: old }],
     current: null,
   };
   d.current = d.folders[0].id;
@@ -753,6 +687,7 @@ function exitGrid() {
 alignBtn.addEventListener("click", () => {
   if (mode === "free") {
     mode = "grid";
+    engine.gravity.x = 0; engine.gravity.y = 1;  // 격자 중엔 센서 중력 초기화
     enterGrid();
     alignBtn.textContent = "🌀 자유";
     alignBtn.classList.add("grid");
@@ -916,38 +851,31 @@ document.getElementById("resizeDone").addEventListener("click", () => {
   resizePanel.classList.remove("open");
 });
 
-// ===== 기울기 센서 → 중력 =====
-const tiltBtn = document.getElementById("tiltBtn");
-
+// ===== 센서 자동 활성 (자유정렬 기본값) =====
+// 첫 터치 때 권한을 받고, 자유 모드에서만 반응. 격자 정렬 중엔 자동 무시.
 function handleOrientation(e) {
+  if (mode !== "free") return;
   if (e.gamma == null || e.beta == null) return;
-  // gamma: 좌우 기울기(-90~90), beta: 앞뒤 기울기(-180~180)
   const gx = Math.max(-1, Math.min(1, e.gamma / 40));
   const gy = Math.max(-1, Math.min(1, e.beta / 40));
   engine.gravity.x = gx;
   engine.gravity.y = gy;
 }
 
-tiltBtn.addEventListener("click", async () => {
-  // iOS 13+ 는 권한 요청 필요
-  if (typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function") {
-    try {
-      const res = await DeviceOrientationEvent.requestPermission();
-      if (res !== "granted") { alert("기울기 권한이 거부되었어요 🥲"); return; }
-    } catch (err) {
-      alert("기울기 센서는 HTTPS 주소에서만 작동해요!");
-      return;
-    }
+// 폰을 흔들면 스티커 대폭발 (버튼 없이!)
+let lastShake = 0;
+function handleMotion(e) {
+  if (mode !== "free") return;
+  const a = e.acceleration;
+  if (!a) return;
+  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  if (mag > 20 && performance.now() - lastShake > 900) {
+    lastShake = performance.now();
+    shakeBurst();
   }
-  window.addEventListener("deviceorientation", handleOrientation);
-  tiltBtn.textContent = "📱 기울기 ON";
-  tiltBtn.classList.add("on");
-});
+}
 
-// ===== 흔들기 버튼 =====
-document.getElementById("shakeBtn").addEventListener("click", () => {
-  if (mode === "grid") alignBtn.click();  // 정렬 풀고 흔들기!
+function shakeBurst() {
   for (const { body } of bodies) {
     Body.setVelocity(body, {
       x: (Math.random() - 0.5) * 30,
@@ -955,14 +883,39 @@ document.getElementById("shakeBtn").addEventListener("click", () => {
     });
     Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.6);
   }
-});
+}
+
+let sensorsInit = false;
+async function enableSensors() {
+  if (sensorsInit) return;
+  sensorsInit = true;
+  try {
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      await DeviceOrientationEvent.requestPermission();
+    }
+  } catch {}
+  try {
+    if (typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function") {
+      await DeviceMotionEvent.requestPermission();
+    }
+  } catch {}
+  window.addEventListener("deviceorientation", handleOrientation);
+  window.addEventListener("devicemotion", handleMotion);
+}
+window.addEventListener("pointerdown", () => { enableSensors(); }, true);
 
 // ===== 카메라 =====
 const cameraEl = document.getElementById("camera");
 const videoEl = cameraEl.querySelector("video");
 let stream = null;
 
-document.getElementById("camBtn").addEventListener("click", async () => {
+const shutterMain = document.getElementById("shutterMain");
+shutterMain.addEventListener("pointerdown", () => shutterMain.classList.add("pressed"));
+shutterMain.addEventListener("pointerup", () => shutterMain.classList.remove("pressed"));
+shutterMain.addEventListener("pointercancel", () => shutterMain.classList.remove("pressed"));
+shutterMain.addEventListener("click", async () => {
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },  // 후면 카메라 우선
@@ -1092,7 +1045,7 @@ galleryInput.addEventListener("change", async () => {
 
 // ===== 파우치 모양/색 (Catch 스타일) =====
 const SHAPE_LIST = ["circle", "square", "triangle", "star", "hex", "heart"];
-const COLOR_LIST = ["#d6ff4b", "#c9b6f8", "#f2d478", "#ff8a8a", "#9cd2fb", "#a8e6cf", "#f9c4e1", "#fbc98c"];
+const COLOR_LIST = ["#a2dc00", "#c9b6f8", "#f2d478", "#ff8a8a", "#9cd2fb", "#a8e6cf", "#f9c4e1", "#fbc98c"];
 
 function shapeSVG(shape, color, size) {
   const paths = {
