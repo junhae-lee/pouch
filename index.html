@@ -131,9 +131,47 @@
     color: #d6ff4b;
     border-color: rgba(214,255,75,0.5);
   }
+
+  /* ===== 가로모드 안내 오버레이 ===== */
+  #rotateGuard {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: #0d0d0f;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+  }
+  #rotateGuard .phone {
+    font-size: 56px;
+    animation: turnUp 1.6s ease-in-out infinite;
+  }
+  @keyframes turnUp {
+    0%, 20%  { transform: rotate(90deg); }
+    60%, 100% { transform: rotate(0deg); }
+  }
+  #rotateGuard p {
+    font-size: 16px;
+    font-weight: 700;
+    color: #d6ff4b;
+  }
+  #rotateGuard small { color: #8a8a85; font-size: 13px; }
+  /* 폰·태블릿 크기에서 가로로 돌리면 발동 (높이가 낮아진 상태) */
+  @media (orientation: landscape) and (max-height: 500px) {
+    #rotateGuard { display: flex; }
+  }
 </style>
 </head>
 <body>
+<div id="rotateGuard">
+  <div class="phone">📱</div>
+  <p>세로로 돌려주세요!</p>
+  <small>Pouch!는 세로 화면에서 즐기는 앱이에요</small>
+</div>
+
 <div id="app">
   <header>
     <div class="logo">Pouch!</div>
@@ -155,6 +193,8 @@ const { Engine, Bodies, Body, Composite, Runner } = Matter;
 const pouch = document.getElementById("pouch");
 const engine = Engine.create();
 engine.gravity.y = 1;
+engine.positionIterations = 10;  // 벽 뚫기 방지: 계산 정밀도 UP
+engine.velocityIterations = 8;
 
 // ===== 스티커 데이터 (나중엔 누끼 딴 사진이 여기 들어감!) =====
 const STICKERS = [
@@ -215,8 +255,34 @@ function spawnStickers() {
   });
 }
 
+// ===== 탈출 감지 & 구조대 =====
+const MAX_SPEED = 28;
+function rescue() {
+  const { w, h } = pouchSize();
+  for (const { body, size } of bodies) {
+    const r = size / 2;
+    const { x, y } = body.position;
+    // 파우치 밖으로 나갔으면 안쪽으로 즉시 복귀
+    if (x < -r || x > w + r || y < -r || y > h + r) {
+      Body.setPosition(body, {
+        x: Math.min(Math.max(x, r + 4), w - r - 4),
+        y: Math.min(Math.max(y, r + 4), h - r - 4),
+      });
+      Body.setVelocity(body, { x: 0, y: 0 });
+    }
+    // 과속 방지 (터널링의 주범)
+    const v = body.velocity;
+    const speed = Math.hypot(v.x, v.y);
+    if (speed > MAX_SPEED) {
+      const k = MAX_SPEED / speed;
+      Body.setVelocity(body, { x: v.x * k, y: v.y * k });
+    }
+  }
+}
+
 // ===== 화면 동기화 =====
 function render() {
+  rescue();
   for (const { body, el, size } of bodies) {
     const x = body.position.x - size / 2;
     const y = body.position.y - size / 2;
@@ -316,7 +382,7 @@ document.getElementById("shakeBtn").addEventListener("click", () => {
 });
 
 // ===== 시작 =====
-window.addEventListener("resize", buildWalls);
+window.addEventListener("resize", () => { buildWalls(); rescue(); });
 buildWalls();
 spawnStickers();
 Runner.run(Runner.create(), engine);
