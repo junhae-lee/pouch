@@ -326,6 +326,49 @@
   #shutterMain .inner { transition: fill 0.12s; }
   #shutterMain.pressed { transform: translateX(-50%) scale(0.9); }
   #shutterMain.pressed .inner { fill: #7fae00; }
+  /* ===== 카메라 화면 ===== */
+  #camera {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #000;
+  }
+  #camera.open { display: block; }
+  #camera video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  #camera .cam-ui {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: max(28px, env(safe-area-inset-bottom));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #shutter {
+    width: 74px; height: 74px;
+    flex: none;
+    border-radius: 50%;
+    background: #fff;
+    border: 5px solid rgba(255,255,255,0.4);
+    background-clip: padding-box;
+    padding: 0;
+  }
+  #closeCam {
+    position: absolute;
+    top: max(16px, env(safe-area-inset-top));
+    right: 16px;
+    width: 44px; height: 44px;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    font-size: 20px;
+    padding: 0;
+  }
   #galleryBtn {
     position: absolute;
     left: 24px;
@@ -904,7 +947,11 @@ async function enableSensors() {
   window.addEventListener("deviceorientation", handleOrientation);
   window.addEventListener("devicemotion", handleMotion);
 }
-window.addEventListener("pointerdown", () => { enableSensors(); }, true);
+// 촬영 버튼 탭은 제외 — 센서 팝업이 카메라 열기를 가로채지 않게
+window.addEventListener("pointerdown", (e) => {
+  if (e.target && e.target.closest && e.target.closest("#shutterMain")) return;
+  enableSensors();
+}, true);
 
 // ===== 카메라 =====
 const cameraEl = document.getElementById("camera");
@@ -923,8 +970,20 @@ shutterMain.addEventListener("click", async () => {
     });
     videoEl.srcObject = stream;
     cameraEl.classList.add("open");
+    try { await videoEl.play(); } catch {}  // iOS: 명시적 재생 필요할 때 있음
   } catch (err) {
-    alert("카메라를 열 수 없어요. 권한을 허용했는지 확인해주세요! (HTTPS 필수)");
+    const name = err && err.name;
+    if (name === "NotAllowedError") {
+      alert("카메라 권한이 꺼져있어요. 설정 > Safari > 카메라에서 허용해주세요!");
+    } else if (name === "NotFoundError") {
+      alert("사용 가능한 카메라를 찾지 못했어요 🥲");
+    } else if (name === "NotReadableError") {
+      alert("다른 앱이 카메라를 쓰고 있어요. 잠시 후 다시 시도해주세요!");
+    } else if (!window.isSecureContext) {
+      alert("카메라는 HTTPS 주소에서만 작동해요!");
+    } else {
+      alert("카메라를 열 수 없어요 (" + name + ").\n카톡·인스타 안에서 열었다면 Safari로 다시 열어주세요!");
+    }
   }
 });
 
@@ -1004,9 +1063,13 @@ async function processAndCollect(cap) {
   spawnPhotoSticker(item, true, loadCollection().length - 1);
 }
 
-document.getElementById("shutter").addEventListener("click", () => {
+document.getElementById("shutter").addEventListener("click", async () => {
+  // 카메라가 아직 예열 중이면 최대 1.5초 대기
+  for (let i = 0; i < 15 && !videoEl.videoWidth; i++) {
+    await new Promise(r => setTimeout(r, 100));
+  }
   const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-  if (!vw || !vh) return;
+  if (!vw || !vh) { alert("카메라 화면이 아직 준비되지 않았어요. 한 번 더 눌러주세요!"); return; }
   // 중앙 정사각형 512px로 캡처
   const s = Math.min(vw, vh);
   const cap = document.createElement("canvas");
