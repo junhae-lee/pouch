@@ -57,8 +57,6 @@
   }
   .icon44:active { transform: scale(0.9); }
   .icon44 svg { display: block; }
-  #alignBtn svg { transition: transform 0.3s; }
-  #alignBtn.grid svg { transform: rotate(180deg); }
   #mainControls {
     position: absolute;
     left: 50%;
@@ -598,7 +596,7 @@
         <circle class="inner" cx="37.5" cy="37.5" r="29.5" fill="#A2DC00"/>
       </svg>
     </button>
-    <button id="alignBtn" class="icon44" aria-label="정렬 전환">
+    <button id="frontCamBtn" class="icon44" aria-label="전면 카메라로 촬영">
       <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
         <circle cx="22" cy="22" r="22" fill="#A2DC00"/>
         <path fill-rule="evenodd" clip-rule="evenodd" d="M11.8807 27.8508V27.8083L17.9133 22.7414V25.6224H23.9829C31.2835 25.6224 31.9255 21.8872 31.9255 21.8872C32.4614 26.8109 29.8457 30.0367 25.0759 30.0367H17.9239V32.9177L11.8913 27.8508H11.8807Z" fill="white"/>
@@ -856,8 +854,6 @@ function rescue() {
 // ===== 정렬 모드 (자유 ↔ 격자) =====
 let mode = "free";
 const gridTargets = new Map();
-const alignBtn = document.getElementById("alignBtn");
-
 function enterGrid() {
   const { w } = pouchSize();
   const cell = 112, gap = 10, margin = 22;
@@ -877,19 +873,6 @@ function exitGrid() {
   gridTargets.clear();
   for (const { body } of bodies) Body.setStatic(body, false);
 }
-
-alignBtn.addEventListener("click", () => {
-  if (mode === "free") {
-    mode = "grid";
-    engine.gravity.x = 0; engine.gravity.y = 1;  // 격자 중엔 센서 중력 초기화
-    enterGrid();
-    alignBtn.classList.add("grid");
-  } else {
-    mode = "free";
-    exitGrid();
-    alignBtn.classList.remove("grid");
-  }
-});
 
 // ===== 화면 동기화 =====
 function render() {
@@ -1148,9 +1131,10 @@ async function openStream(mode) {
   try { await videoEl.play(); } catch {}
 }
 
-shutterMain.addEventListener("click", async () => {
+async function openCamera(mode) {
   try {
-    await openStream(facing);
+    await openStream(mode);
+    facing = mode;
     cameraEl.classList.add("open");
   } catch (err) {
     const name = err && err.name;
@@ -1166,7 +1150,10 @@ shutterMain.addEventListener("click", async () => {
       alert("카메라를 열 수 없어요 (" + name + ").\n카톡·인스타 안에서 열었다면 Safari로 다시 열어주세요!");
     }
   }
-});
+}
+
+shutterMain.addEventListener("click", () => openCamera(facing));           // 촬영: 마지막 카메라로
+document.getElementById("frontCamBtn").addEventListener("click", () => openCamera("user"));  // 전면 카메라로 바로
 
 // 전후면 전환
 document.getElementById("flipCam").addEventListener("click", async () => {
