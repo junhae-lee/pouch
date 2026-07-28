@@ -51,6 +51,151 @@
     color: #d6ff4b;
     border-color: rgba(214,255,75,0.5);
   }
+  .title-group { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+  .folder-name {
+    font-size: 13px;
+    color: #8a8a85;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-btns { display: flex; gap: 8px; flex: none; }
+  #listBtn {
+    flex: none;
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    font-size: 17px;
+    background: rgba(255,255,255,0.1);
+    color: #f2f2ee;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 0;
+  }
+
+  /* ===== 페이지 (목록/편집) ===== */
+  .page {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    background: #0d0d0f;
+    flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    gap: 18px;
+    overflow-y: auto;
+  }
+  .page.open { display: flex; }
+  .page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .page-head h2 { font-size: 18px; font-weight: 800; }
+  .round-btn {
+    width: 44px; height: 44px;
+    flex: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    color: #f2f2ee;
+    border: 1px solid rgba(255,255,255,0.2);
+    font-size: 19px;
+    padding: 0;
+  }
+  .pill-btn {
+    flex: none;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.1);
+    color: #f2f2ee;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .pill-btn.save { background: #d6ff4b; color: #111; border: none; font-weight: 800; }
+
+  /* 파우치 목록 격자 */
+  #folderGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .folder-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 12px 16px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    cursor: pointer;
+  }
+  .folder-card.current { border-color: rgba(214,255,75,0.6); background: rgba(214,255,75,0.07); }
+  .folder-card .fname { font-size: 14px; font-weight: 700; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .folder-card .fcount { font-size: 11px; color: #8a8a85; }
+  .folder-card .edit-btn {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: #fff;
+    font-size: 13px;
+    padding: 0;
+  }
+  .folder-card.new-card {
+    justify-content: center;
+    min-height: 150px;
+    border-style: dashed;
+    color: #8a8a85;
+    font-size: 15px;
+    font-weight: 700;
+  }
+  .folder-card.new-card .plus { font-size: 30px; color: #d6ff4b; }
+
+  /* 편집 페이지 */
+  #editPreview { display: grid; place-items: center; padding: 8px 0; }
+  #editName {
+    width: 100%;
+    padding: 15px 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.07);
+    color: #f2f2ee;
+    font-size: 16px;
+    font-family: inherit;
+    text-align: center;
+    outline: none;
+  }
+  #editName:focus { border-color: rgba(214,255,75,0.6); }
+  .opt-label { font-size: 13px; color: #8a8a85; font-weight: 700; }
+  .opts {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .opt {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1.4;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.06);
+    border: 1.5px solid transparent;
+    padding: 0;
+  }
+  .opt.selected { border-color: #d6ff4b; background: rgba(214,255,75,0.08); }
+  .opt .dot { width: 34px; height: 34px; border-radius: 50%; }
+  #folderDelete {
+    margin-top: auto;
+    padding: 14px 0;
+    border-radius: 16px;
+    background: rgba(255,80,80,0.1);
+    border: 1px solid rgba(255,80,80,0.4);
+    color: #ff7b7b;
+    font-weight: 700;
+  }
+  #folderDelete[hidden] { display: none; }
 
   /* ===== 누끼 처리중 오버레이 ===== */
   #processing {
@@ -319,8 +464,14 @@
 
 <div id="app">
   <header>
-    <div class="logo">Pouch!</div>
-    <button id="alignBtn">🧲 정렬</button>
+    <div class="title-group">
+      <div class="logo">Pouch!</div>
+      <div id="folderName" class="folder-name"></div>
+    </div>
+    <div class="header-btns">
+      <button id="alignBtn">🧲 정렬</button>
+      <button id="listBtn" aria-label="파우치 목록">🗂️</button>
+    </div>
   </header>
 
   <div id="pouch"></div>
@@ -340,6 +491,30 @@
     <button id="shutter" aria-label="촬영"></button>
   </div>
   <input type="file" id="galleryInput" accept="image/*" hidden>
+</div>
+
+<div id="folderList" class="page">
+  <div class="page-head">
+    <button class="round-btn" id="closeList">✕</button>
+    <h2>내 파우치</h2>
+    <button class="round-btn" id="newFolderBtn">＋</button>
+  </div>
+  <div id="folderGrid"></div>
+</div>
+
+<div id="folderEdit" class="page">
+  <div class="page-head">
+    <button class="pill-btn" id="editCancel">취소</button>
+    <h2>파우치 편집</h2>
+    <button class="pill-btn save" id="editSave">저장</button>
+  </div>
+  <div id="editPreview"></div>
+  <input id="editName" maxlength="12" placeholder="파우치 이름">
+  <div class="opt-label">모양</div>
+  <div id="shapeOpts" class="opts"></div>
+  <div class="opt-label">색</div>
+  <div id="colorOpts" class="opts"></div>
+  <button id="folderDelete">🗑️ 파우치 삭제</button>
 </div>
 
 <div id="resizePanel">
@@ -451,18 +626,41 @@ function spawnPhotoSticker(item, dropFromTop, storeIdx) {
   if (mode === "grid") enterGrid();  // 정렬 모드 중이면 새 스티커도 줄맞춤
 }
 
-// ===== 보관함 (브라우저 저장소) =====
-const STORE_KEY = "pouch_stickers_v2";
+// ===== 파우치(폴더) 저장소 v3 =====
+const DB_KEY = "pouch_db_v3";
+const STORE_KEY = DB_KEY;  // (구버전 호환용 별칭)
 
-function loadCollection() {
-  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
-  catch { return []; }
+function loadDB() {
+  try {
+    const d = JSON.parse(localStorage.getItem(DB_KEY));
+    if (d && d.folders && d.folders.length) return d;
+  } catch {}
+  // 첫 실행: 구버전(v2) 채집품이 있으면 기본 파우치로 이사
+  let old = [];
+  try { old = JSON.parse(localStorage.getItem("pouch_stickers_v2")) || []; } catch {}
+  const d = {
+    folders: [{ id: "f" + Date.now(), name: "기본 파우치", shape: "square", color: "#d6ff4b", stickers: old }],
+    current: null,
+  };
+  d.current = d.folders[0].id;
+  return d;
 }
-function saveToCollection(item) {
-  const list = loadCollection();
-  list.push(item);
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
+
+let db = loadDB();
+
+function saveDB() {
+  try { localStorage.setItem(DB_KEY, JSON.stringify(db)); }
   catch { alert("보관함이 가득 찼어요! (저장 공간 부족)"); }
+}
+
+function currentFolder() {
+  return db.folders.find(f => f.id === db.current) || db.folders[0];
+}
+
+function loadCollection() { return currentFolder().stickers; }
+function saveToCollection(item) {
+  currentFolder().stickers.push(item);
+  saveDB();
 }
 
 // ===== 탈출 감지 & 구조대 =====
@@ -657,12 +855,12 @@ function applyScale(item, s) {
   if (!item.el.classList.contains("photo")) {
     item.el.style.fontSize = item.baseSize * s * 0.82 + "px";
   }
-  // 채집품이면 보관함에도 크기 저장
+  // 채집품이면 현재 파우치에 크기 저장
   if (item.storeIdx !== null) {
-    const list = loadCollection();
+    const list = currentFolder().stickers;
     if (list[item.storeIdx]) {
       list[item.storeIdx].scale = s;
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {}
+      saveDB();
     }
   }
 }
@@ -855,6 +1053,159 @@ galleryInput.addEventListener("change", async () => {
   }
 });
 
+// ===== 파우치 모양/색 (Catch 스타일) =====
+const SHAPE_LIST = ["circle", "square", "triangle", "star", "hex", "heart"];
+const COLOR_LIST = ["#d6ff4b", "#c9b6f8", "#f2d478", "#ff8a8a", "#9cd2fb", "#a8e6cf", "#f9c4e1", "#fbc98c"];
+
+function shapeSVG(shape, color, size) {
+  const paths = {
+    triangle: "M50 10 L92 85 L8 85 Z",
+    star: "M50 6 L61 38 L95 38 L67 58 L78 92 L50 71 L22 92 L33 58 L5 38 L39 38 Z",
+    hex: "M28 12 L72 12 L94 50 L72 88 L28 88 L6 50 Z",
+    heart: "M50 88 C20 64 6 46 6 30 C6 16 17 8 29 8 C38 8 46 13 50 21 C54 13 62 8 71 8 C83 8 94 16 94 30 C94 46 80 64 50 88 Z",
+  };
+  let inner;
+  if (shape === "circle") inner = `<circle cx="50" cy="50" r="42" fill="${color}" stroke="#fff" stroke-width="6"/>`;
+  else if (shape === "square") inner = `<rect x="10" y="10" width="80" height="80" rx="18" fill="${color}" stroke="#fff" stroke-width="6"/>`;
+  else inner = `<path d="${paths[shape]}" fill="${color}" stroke="#fff" stroke-width="6" stroke-linejoin="round"/>`;
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}">${inner}</svg>`;
+}
+
+// ===== 파우치 전환 =====
+const folderNameEl = document.getElementById("folderName");
+
+function clearPhotoStickers() {
+  for (let i = bodies.length - 1; i >= 0; i--) {
+    const it = bodies[i];
+    if (it.storeIdx !== null) {
+      Composite.remove(engine.world, it.body);
+      it.el.remove();
+      bodies.splice(i, 1);
+    }
+  }
+}
+
+function switchFolder(id) {
+  db.current = id;
+  saveDB();
+  clearPhotoStickers();
+  currentFolder().stickers.forEach((item, i) => spawnPhotoSticker(item, false, i));
+  folderNameEl.textContent = currentFolder().name;
+  if (mode === "grid") enterGrid();
+}
+
+// ===== 파우치 목록 페이지 =====
+const folderListEl = document.getElementById("folderList");
+const folderGridEl = document.getElementById("folderGrid");
+
+function renderFolderList() {
+  folderGridEl.innerHTML = "";
+  db.folders.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "folder-card" + (f.id === db.current ? " current" : "");
+    card.innerHTML = `
+      ${shapeSVG(f.shape, f.color, 78)}
+      <div class="fname">${f.name}</div>
+      <div class="fcount">스티커 ${f.stickers.length}개</div>
+      <button class="edit-btn" aria-label="편집">✏️</button>
+    `;
+    card.addEventListener("click", () => {
+      switchFolder(f.id);
+      folderListEl.classList.remove("open");
+    });
+    card.querySelector(".edit-btn").addEventListener("click", (e) => {
+      e.stopPropagation();
+      openFolderEdit(f.id);
+    });
+    folderGridEl.appendChild(card);
+  });
+  // 새 파우치 카드
+  const add = document.createElement("div");
+  add.className = "folder-card new-card";
+  add.innerHTML = `<div class="plus">＋</div><div>새 파우치</div>`;
+  add.addEventListener("click", () => openFolderEdit(null));
+  folderGridEl.appendChild(add);
+}
+
+document.getElementById("listBtn").addEventListener("click", () => {
+  renderFolderList();
+  folderListEl.classList.add("open");
+});
+document.getElementById("closeList").addEventListener("click", () => folderListEl.classList.remove("open"));
+document.getElementById("newFolderBtn").addEventListener("click", () => openFolderEdit(null));
+
+// ===== 파우치 편집 페이지 =====
+const folderEditEl = document.getElementById("folderEdit");
+const editPreviewEl = document.getElementById("editPreview");
+const editNameEl = document.getElementById("editName");
+const shapeOptsEl = document.getElementById("shapeOpts");
+const colorOptsEl = document.getElementById("colorOpts");
+const folderDeleteEl = document.getElementById("folderDelete");
+let editingId = null;  // null = 새 파우치
+let draft = null;      // { name, shape, color }
+
+function renderEditOptions() {
+  editPreviewEl.innerHTML = shapeSVG(draft.shape, draft.color, 130);
+  shapeOptsEl.innerHTML = "";
+  SHAPE_LIST.forEach(sh => {
+    const b = document.createElement("button");
+    b.className = "opt" + (sh === draft.shape ? " selected" : "");
+    b.innerHTML = shapeSVG(sh, draft.color, 40);
+    b.addEventListener("click", () => { draft.shape = sh; renderEditOptions(); });
+    shapeOptsEl.appendChild(b);
+  });
+  colorOptsEl.innerHTML = "";
+  COLOR_LIST.forEach(c => {
+    const b = document.createElement("button");
+    b.className = "opt" + (c === draft.color ? " selected" : "");
+    b.innerHTML = `<div class="dot" style="background:${c}"></div>`;
+    b.addEventListener("click", () => { draft.color = c; renderEditOptions(); });
+    colorOptsEl.appendChild(b);
+  });
+}
+
+function openFolderEdit(id) {
+  editingId = id;
+  const f = id ? db.folders.find(x => x.id === id) : null;
+  draft = f
+    ? { name: f.name, shape: f.shape, color: f.color }
+    : { name: "", shape: "circle", color: COLOR_LIST[0] };
+  editNameEl.value = draft.name;
+  // 삭제 버튼: 기존 파우치이면서 마지막 하나가 아닐 때만
+  folderDeleteEl.hidden = !id || db.folders.length <= 1;
+  renderEditOptions();
+  folderEditEl.classList.add("open");
+}
+
+document.getElementById("editCancel").addEventListener("click", () => folderEditEl.classList.remove("open"));
+
+document.getElementById("editSave").addEventListener("click", () => {
+  const name = editNameEl.value.trim() || "새 파우치";
+  if (editingId) {
+    const f = db.folders.find(x => x.id === editingId);
+    f.name = name; f.shape = draft.shape; f.color = draft.color;
+    saveDB();
+    if (f.id === db.current) folderNameEl.textContent = f.name;
+  } else {
+    const f = { id: "f" + Date.now(), name, shape: draft.shape, color: draft.color, stickers: [] };
+    db.folders.push(f);
+    switchFolder(f.id);  // 새 파우치로 바로 이동 (saveDB 포함)
+  }
+  folderEditEl.classList.remove("open");
+  renderFolderList();
+});
+
+folderDeleteEl.addEventListener("click", () => {
+  if (!editingId || db.folders.length <= 1) return;
+  const f = db.folders.find(x => x.id === editingId);
+  if (!confirm(`"${f.name}" 파우치와 스티커 ${f.stickers.length}개를 삭제할까요?`)) return;
+  db.folders = db.folders.filter(x => x.id !== editingId);
+  if (db.current === editingId) switchFolder(db.folders[0].id);
+  else saveDB();
+  folderEditEl.classList.remove("open");
+  renderFolderList();
+});
+
 // ===== 시작 =====
 window.addEventListener("resize", () => {
   buildWalls();
@@ -862,7 +1213,9 @@ window.addEventListener("resize", () => {
 });
 buildWalls();
 spawnStickers();
-loadCollection().forEach((item, i) => spawnPhotoSticker(item, false, i));  // 채집품 복원
+currentFolder().stickers.forEach((item, i) => spawnPhotoSticker(item, false, i));  // 채집품 복원
+folderNameEl.textContent = currentFolder().name;
+saveDB();
 Runner.run(Runner.create(), engine);
 render();
 </script>
