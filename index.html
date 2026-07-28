@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pouch! — 파우치 프로토타입</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #0d0d0f;
+    font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", sans-serif;
+    color: #f2f2ee;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none;
+  }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .logo {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: #d6ff4b;
+    font-style: italic;
+  }
+  .hint {
+    font-size: 12px;
+    color: #8a8a85;
+  }
+
+  /* ===== 투명 파우치 ===== */
+  #pouch {
+    position: relative;
+    flex: 1;
+    border-radius: 28px;
+    overflow: hidden;
+    background: linear-gradient(155deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03) 45%, rgba(255,255,255,0.07));
+    border: 1.5px solid rgba(255,255,255,0.22);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      inset 0 -20px 40px rgba(0,0,0,0.35),
+      0 20px 60px rgba(0,0,0,0.6);
+  }
+  /* 비닐 광택 하이라이트 */
+  #pouch::before {
+    content: "";
+    position: absolute;
+    top: -30%;
+    left: -20%;
+    width: 70%;
+    height: 80%;
+    background: linear-gradient(120deg, rgba(255,255,255,0.14), rgba(255,255,255,0) 60%);
+    transform: rotate(-8deg);
+    pointer-events: none;
+    z-index: 5;
+  }
+  /* 파우치 지퍼 라인 */
+  #pouch::after {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 16px;
+    right: 16px;
+    height: 6px;
+    border-radius: 3px;
+    background: repeating-linear-gradient(90deg,
+      rgba(255,255,255,0.28) 0 8px,
+      rgba(255,255,255,0.08) 8px 16px);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .sticker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: grid;
+    place-items: center;
+    will-change: transform;
+    cursor: grab;
+    /* 흰색 다이컷 테두리 (스티커 느낌) */
+    filter:
+      drop-shadow(0 0 1.5px #fff)
+      drop-shadow(0 0 1.5px #fff)
+      drop-shadow(0 0 1px #fff)
+      drop-shadow(0 4px 6px rgba(0,0,0,0.45));
+  }
+  .sticker.dragging { cursor: grabbing; }
+
+  footer {
+    display: flex;
+    gap: 10px;
+  }
+  button {
+    flex: 1;
+    padding: 14px 0;
+    border: none;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.08s;
+  }
+  button:active { transform: scale(0.96); }
+  #shakeBtn {
+    background: #d6ff4b;
+    color: #111;
+  }
+  #tiltBtn {
+    background: rgba(255,255,255,0.1);
+    color: #f2f2ee;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  #tiltBtn.on {
+    background: rgba(214,255,75,0.15);
+    color: #d6ff4b;
+    border-color: rgba(214,255,75,0.5);
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">Pouch!</div>
+    <div class="hint">폰을 기울이거나, 스티커를 던져보세요</div>
+  </header>
+
+  <div id="pouch"></div>
+
+  <footer>
+    <button id="tiltBtn">📱 기울기 켜기</button>
+    <button id="shakeBtn">🫨 흔들기</button>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+const { Engine, Bodies, Body, Composite, Runner } = Matter;
+
+const pouch = document.getElementById("pouch");
+const engine = Engine.create();
+engine.gravity.y = 1;
+
+// ===== 스티커 데이터 (나중엔 누끼 딴 사진이 여기 들어감!) =====
+const STICKERS = [
+  { emoji: "🍓", size: 72 },
+  { emoji: "📷", size: 80 },
+  { emoji: "🧸", size: 88 },
+  { emoji: "💿", size: 76 },
+  { emoji: "🌷", size: 72 },
+  { emoji: "🥐", size: 80 },
+  { emoji: "⭐️", size: 64 },
+  { emoji: "🎧", size: 76 },
+];
+
+const bodies = [];   // { body, el, size }
+let walls = [];
+
+function pouchSize() {
+  return { w: pouch.clientWidth, h: pouch.clientHeight };
+}
+
+// ===== 벽 만들기 (파우치 안쪽 경계) =====
+function buildWalls() {
+  walls.forEach(w => Composite.remove(engine.world, w));
+  const { w, h } = pouchSize();
+  const t = 120; // 두꺼운 벽 (터널링 방지)
+  walls = [
+    Bodies.rectangle(w / 2, -t / 2 + 4, w * 2, t, { isStatic: true }),      // 위
+    Bodies.rectangle(w / 2, h + t / 2 - 4, w * 2, t, { isStatic: true }),  // 아래
+    Bodies.rectangle(-t / 2 + 4, h / 2, t, h * 2, { isStatic: true }),      // 왼쪽
+    Bodies.rectangle(w + t / 2 - 4, h / 2, t, h * 2, { isStatic: true }),  // 오른쪽
+  ];
+  Composite.add(engine.world, walls);
+}
+
+// ===== 스티커 생성 =====
+function spawnStickers() {
+  const { w, h } = pouchSize();
+  STICKERS.forEach((s, i) => {
+    const el = document.createElement("div");
+    el.className = "sticker";
+    el.textContent = s.emoji;
+    el.style.fontSize = s.size * 0.82 + "px";
+    el.style.width = s.size + "px";
+    el.style.height = s.size + "px";
+    pouch.appendChild(el);
+
+    const x = 40 + Math.random() * (w - 80);
+    const y = 40 + (i % 4) * 60 + Math.random() * 30;
+    const body = Bodies.circle(x, y, s.size / 2, {
+      restitution: 0.55,
+      friction: 0.05,
+      frictionAir: 0.015,
+      density: 0.0015,
+    });
+    Body.setAngle(body, (Math.random() - 0.5) * 0.8);
+    Composite.add(engine.world, body);
+    bodies.push({ body, el, size: s.size });
+  });
+}
+
+// ===== 화면 동기화 =====
+function render() {
+  for (const { body, el, size } of bodies) {
+    const x = body.position.x - size / 2;
+    const y = body.position.y - size / 2;
+    el.style.transform = `translate(${x}px, ${y}px) rotate(${body.angle}rad)`;
+  }
+  requestAnimationFrame(render);
+}
+
+// ===== 드래그 & 던지기 =====
+let drag = null; // { item, lastX, lastY, lastT }
+
+pouch.addEventListener("pointerdown", (e) => {
+  const rect = pouch.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  // 가장 가까운 스티커 찾기
+  let best = null, bestD = 1e9;
+  for (const item of bodies) {
+    const dx = item.body.position.x - px;
+    const dy = item.body.position.y - py;
+    const d = Math.hypot(dx, dy);
+    if (d < item.size * 0.7 && d < bestD) { best = item; bestD = d; }
+  }
+  if (best) {
+    drag = { item: best, lastX: px, lastY: py, lastT: performance.now() };
+    best.el.classList.add("dragging");
+    Body.setStatic(best.body, true);
+    pouch.setPointerCapture(e.pointerId);
+  }
+});
+
+pouch.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  const rect = pouch.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+  Body.setPosition(drag.item.body, { x: px, y: py });
+  const now = performance.now();
+  const dt = Math.max(now - drag.lastT, 1);
+  drag.vx = (px - drag.lastX) / dt * 16;
+  drag.vy = (py - drag.lastY) / dt * 16;
+  drag.lastX = px; drag.lastY = py; drag.lastT = now;
+});
+
+function endDrag() {
+  if (!drag) return;
+  const { item, vx = 0, vy = 0 } = drag;
+  item.el.classList.remove("dragging");
+  Body.setStatic(item.body, false);
+  Body.setVelocity(item.body, {
+    x: Math.max(-25, Math.min(25, vx)),
+    y: Math.max(-25, Math.min(25, vy)),
+  });
+  drag = null;
+}
+pouch.addEventListener("pointerup", endDrag);
+pouch.addEventListener("pointercancel", endDrag);
+
+// ===== 기울기 센서 → 중력 =====
+const tiltBtn = document.getElementById("tiltBtn");
+
+function handleOrientation(e) {
+  if (e.gamma == null || e.beta == null) return;
+  // gamma: 좌우 기울기(-90~90), beta: 앞뒤 기울기(-180~180)
+  const gx = Math.max(-1, Math.min(1, e.gamma / 40));
+  const gy = Math.max(-1, Math.min(1, e.beta / 40));
+  engine.gravity.x = gx;
+  engine.gravity.y = gy;
+}
+
+tiltBtn.addEventListener("click", async () => {
+  // iOS 13+ 는 권한 요청 필요
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res !== "granted") { alert("기울기 권한이 거부되었어요 🥲"); return; }
+    } catch (err) {
+      alert("기울기 센서는 HTTPS 주소에서만 작동해요!");
+      return;
+    }
+  }
+  window.addEventListener("deviceorientation", handleOrientation);
+  tiltBtn.textContent = "📱 기울기 ON";
+  tiltBtn.classList.add("on");
+});
+
+// ===== 흔들기 버튼 =====
+document.getElementById("shakeBtn").addEventListener("click", () => {
+  for (const { body } of bodies) {
+    Body.setVelocity(body, {
+      x: (Math.random() - 0.5) * 30,
+      y: -Math.random() * 22 - 6,
+    });
+    Body.setAngularVelocity(body, (Math.random() - 0.5) * 0.6);
+  }
+});
+
+// ===== 시작 =====
+window.addEventListener("resize", buildWalls);
+buildWalls();
+spawnStickers();
+Runner.run(Runner.create(), engine);
+render();
+</script>
+</body>
+</html>
