@@ -214,6 +214,62 @@
     padding: 0;
   }
   #camBtn { flex: 0.7; background: rgba(255,255,255,0.1); color: #f2f2ee; border: 1px solid rgba(255,255,255,0.2); }
+  #galleryBtn {
+    position: absolute;
+    left: 24px;
+    bottom: 0;
+    top: 0;
+    margin: auto 0;
+    width: 52px; height: 52px;
+    flex: none;
+    border-radius: 14px;
+    background: rgba(0,0,0,0.5);
+    border: 1.5px solid rgba(255,255,255,0.5);
+    color: #fff;
+    font-size: 24px;
+    padding: 0;
+  }
+
+  /* ===== 크기 조절 패널 ===== */
+  .sticker.selected {
+    animation: pulse 0.9s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  #resizePanel {
+    display: none;
+    position: fixed;
+    left: 16px; right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 40;
+    background: rgba(28,28,32,0.97);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  }
+  #resizePanel.open { display: block; }
+  #resizePanel .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #resizePanel label { font-size: 14px; font-weight: 700; flex: none; }
+  #sizeSlider {
+    flex: 1;
+    accent-color: #d6ff4b;
+    height: 28px;
+  }
+  #sizeVal { flex: none; width: 48px; text-align: right; font-size: 13px; color: #d6ff4b; font-weight: 700; }
+  #resizeDone {
+    margin-top: 12px;
+    width: 100%;
+    padding: 12px 0;
+    background: #d6ff4b;
+    color: #111;
+  }
 
   /* ===== 가로모드 안내 오버레이 ===== */
   #rotateGuard {
@@ -280,8 +336,19 @@
   <video playsinline autoplay muted></video>
   <button id="closeCam">✕</button>
   <div class="cam-ui">
+    <button id="galleryBtn" aria-label="앨범에서 가져오기">🖼️</button>
     <button id="shutter" aria-label="촬영"></button>
   </div>
+  <input type="file" id="galleryInput" accept="image/*" hidden>
+</div>
+
+<div id="resizePanel">
+  <div class="row">
+    <label>📏 크기</label>
+    <input type="range" id="sizeSlider" min="50" max="200" value="100">
+    <span id="sizeVal">100%</span>
+  </div>
+  <button id="resizeDone">완료</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
@@ -352,16 +419,21 @@ function spawnStickers() {
     pouch.appendChild(el);
     const x = 40 + Math.random() * (w - 80);
     const y = 40 + (i % 4) * 60 + Math.random() * 30;
-    bodies.push({ body: makeBody(x, y, s.size), el, size: s.size });
+    bodies.push({
+      body: makeBody(x, y, s.size), el, size: s.size,
+      baseSize: s.size, scale: 1, storeIdx: null,
+    });
   });
 }
 
-// 카메라로 채집한 스티커 (누끼 PNG, 원본 비율 유지)
-function spawnPhotoSticker(item, dropFromTop) {
+// 카메라·앨범으로 채집한 스티커 (누끼 PNG, 원본 비율 유지)
+function spawnPhotoSticker(item, dropFromTop, storeIdx) {
   const { w } = pouchSize();
   const MAX = 110;
   const k = MAX / Math.max(item.w, item.h);
-  const ew = Math.round(item.w * k), eh = Math.round(item.h * k);
+  const bw = Math.round(item.w * k), bh = Math.round(item.h * k);
+  const scale = item.scale || 1;
+  const ew = Math.round(bw * scale), eh = Math.round(bh * scale);
   const size = Math.max(ew, eh);
   const el = document.createElement("div");
   el.className = "sticker photo";
@@ -371,7 +443,11 @@ function spawnPhotoSticker(item, dropFromTop) {
   pouch.appendChild(el);
   const x = 60 + Math.random() * (w - 120);
   const y = dropFromTop ? 60 : 120 + Math.random() * 100;
-  bodies.push({ body: makeBody(x, y, size), el, size, ew, eh });
+  bodies.push({
+    body: makeBody(x, y, size), el, size, ew, eh,
+    baseSize: Math.max(bw, bh), baseEw: bw, baseEh: bh, scale,
+    storeIdx: storeIdx ?? null,
+  });
   if (mode === "grid") enterGrid();  // 정렬 모드 중이면 새 스티커도 줄맞춤
 }
 
@@ -475,11 +551,14 @@ function render() {
   requestAnimationFrame(render);
 }
 
-// ===== 드래그 & 던지기 =====
+// ===== 드래그 & 던지기 & 길게 누르기 =====
 let drag = null; // { item, lastX, lastY, lastT }
+let press = null; // 길게 누르기 감시 { item, x0, y0, timer }
+const LONG_PRESS_MS = 550;
 
 pouch.addEventListener("pointerdown", (e) => {
   if (mode === "grid") return;  // 정렬 모드에선 드래그 잠금
+  if (resizeTarget) return;      // 크기조절 중엔 잠금
   const rect = pouch.getBoundingClientRect();
   const px = e.clientX - rect.left;
   const py = e.clientY - rect.top;
@@ -496,6 +575,17 @@ pouch.addEventListener("pointerdown", (e) => {
     best.el.classList.add("dragging");
     Body.setStatic(best.body, true);
     pouch.setPointerCapture(e.pointerId);
+    // 길게 누르기 타이머: 거의 안 움직이고 0.55초 지나면 크기조절 모드
+    press = {
+      item: best, x0: px, y0: py,
+      timer: setTimeout(() => {
+        if (drag && drag.item === best) {
+          drag.item.el.classList.remove("dragging");
+          drag = null;
+          openResize(best);
+        }
+      }, LONG_PRESS_MS),
+    };
   }
 });
 
@@ -504,6 +594,11 @@ pouch.addEventListener("pointermove", (e) => {
   const rect = pouch.getBoundingClientRect();
   const px = e.clientX - rect.left;
   const py = e.clientY - rect.top;
+  // 8px 이상 움직이면 길게 누르기 취소 (드래그 확정)
+  if (press && Math.hypot(px - press.x0, py - press.y0) > 8) {
+    clearTimeout(press.timer);
+    press = null;
+  }
   Body.setPosition(drag.item.body, { x: px, y: py });
   const now = performance.now();
   const dt = Math.max(now - drag.lastT, 1);
@@ -513,6 +608,7 @@ pouch.addEventListener("pointermove", (e) => {
 });
 
 function endDrag() {
+  if (press) { clearTimeout(press.timer); press = null; }
   if (!drag) return;
   const { item, vx = 0, vy = 0 } = drag;
   item.el.classList.remove("dragging");
@@ -525,6 +621,60 @@ function endDrag() {
 }
 pouch.addEventListener("pointerup", endDrag);
 pouch.addEventListener("pointercancel", endDrag);
+
+// ===== 크기 조절 =====
+let resizeTarget = null;
+const resizePanel = document.getElementById("resizePanel");
+const sizeSlider = document.getElementById("sizeSlider");
+const sizeVal = document.getElementById("sizeVal");
+
+function openResize(item) {
+  resizeTarget = item;
+  Body.setStatic(item.body, true);  // 조절하는 동안 공중 정지
+  item.el.classList.add("selected");
+  sizeSlider.value = Math.round(item.scale * 100);
+  sizeVal.textContent = sizeSlider.value + "%";
+  resizePanel.classList.add("open");
+  if (navigator.vibrate) navigator.vibrate(30);  // 촉각 피드백 (안드로이드)
+}
+
+function applyScale(item, s) {
+  item.scale = s;
+  const newEw = Math.round((item.baseEw || item.baseSize) * s);
+  const newEh = Math.round((item.baseEh || item.baseSize) * s);
+  const newSize = Math.max(newEw, newEh);
+  const k = newSize / item.size;
+  Matter.Body.scale(item.body, k, k);  // 물리 몸집도 함께
+  item.size = newSize;
+  if (item.ew !== undefined) { item.ew = newEw; item.eh = newEh; }
+  item.el.style.width = newEw + "px";
+  item.el.style.height = newEh + "px";
+  if (!item.el.classList.contains("photo")) {
+    item.el.style.fontSize = item.baseSize * s * 0.82 + "px";
+  }
+  // 채집품이면 보관함에도 크기 저장
+  if (item.storeIdx !== null) {
+    const list = loadCollection();
+    if (list[item.storeIdx]) {
+      list[item.storeIdx].scale = s;
+      try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch {}
+    }
+  }
+}
+
+sizeSlider.addEventListener("input", () => {
+  if (!resizeTarget) return;
+  sizeVal.textContent = sizeSlider.value + "%";
+  applyScale(resizeTarget, sizeSlider.value / 100);
+});
+
+document.getElementById("resizeDone").addEventListener("click", () => {
+  if (!resizeTarget) return;
+  resizeTarget.el.classList.remove("selected");
+  Body.setStatic(resizeTarget.body, false);
+  resizeTarget = null;
+  resizePanel.classList.remove("open");
+});
 
 // ===== 기울기 센서 → 중력 =====
 const tiltBtn = document.getElementById("tiltBtn");
@@ -630,17 +780,9 @@ function trimAndShrink(img) {
   return { url: out.toDataURL("image/png"), w: out.width, h: out.height };
 }
 
-document.getElementById("shutter").addEventListener("click", async () => {
-  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
-  if (!vw || !vh) return;
-  // 중앙 정사각형 512px로 캡처
-  const s = Math.min(vw, vh);
-  const cap = document.createElement("canvas");
-  cap.width = 512; cap.height = 512;
-  cap.getContext("2d").drawImage(videoEl, (vw - s) / 2, (vh - s) / 2, s, s, 0, 0, 512, 512);
-  closeCamera();
+// 촬영/앨범 공용 파이프라인: 캔버스 → AI 누끼 → 보관 → 파우치 투하
+async function processAndCollect(cap) {
   processingEl.classList.add("open");
-
   let item = null;
   try {
     const removeBackground = await getNukkiEngine();
@@ -656,16 +798,56 @@ document.getElementById("shutter").addEventListener("click", async () => {
     item = null;  // 누끼 실패 → 폴백
   }
   if (!item) {
-    // 폴백: 누끼 없이 원본 정사각으로 채집
+    // 폴백: 누끼 없이 원본으로 채집
+    const k = Math.min(1, 200 / Math.max(cap.width, cap.height));
     const fb = document.createElement("canvas");
-    fb.width = 200; fb.height = 200;
-    fb.getContext("2d").drawImage(cap, 0, 0, 200, 200);
-    item = { url: fb.toDataURL("image/jpeg", 0.82), w: 200, h: 200 };
+    fb.width = Math.round(cap.width * k); fb.height = Math.round(cap.height * k);
+    fb.getContext("2d").drawImage(cap, 0, 0, fb.width, fb.height);
+    item = { url: fb.toDataURL("image/jpeg", 0.82), w: fb.width, h: fb.height };
     alert("누끼에 실패해서 원본으로 채집했어요 🥲 (네트워크를 확인해보세요)");
   }
   processingEl.classList.remove("open");
   saveToCollection(item);
-  spawnPhotoSticker(item, true);
+  spawnPhotoSticker(item, true, loadCollection().length - 1);
+}
+
+document.getElementById("shutter").addEventListener("click", () => {
+  const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+  if (!vw || !vh) return;
+  // 중앙 정사각형 512px로 캡처
+  const s = Math.min(vw, vh);
+  const cap = document.createElement("canvas");
+  cap.width = 512; cap.height = 512;
+  cap.getContext("2d").drawImage(videoEl, (vw - s) / 2, (vh - s) / 2, s, s, 0, 0, 512, 512);
+  closeCamera();
+  processAndCollect(cap);
+});
+
+// ===== 앨범에서 가져오기 =====
+const galleryInput = document.getElementById("galleryInput");
+document.getElementById("galleryBtn").addEventListener("click", () => galleryInput.click());
+
+galleryInput.addEventListener("change", async () => {
+  const file = galleryInput.files && galleryInput.files[0];
+  galleryInput.value = "";
+  if (!file) return;
+  try {
+    const img = new Image();
+    await new Promise((res, rej) => {
+      img.onload = res; img.onerror = rej;
+      img.src = URL.createObjectURL(file);
+    });
+    // 비율 유지, 최대 640px로 축소해서 파이프라인 투입
+    const k = Math.min(1, 640 / Math.max(img.width, img.height));
+    const cap = document.createElement("canvas");
+    cap.width = Math.round(img.width * k);
+    cap.height = Math.round(img.height * k);
+    cap.getContext("2d").drawImage(img, 0, 0, cap.width, cap.height);
+    closeCamera();
+    processAndCollect(cap);
+  } catch {
+    alert("이미지를 읽을 수 없어요. 다른 사진으로 시도해보세요!");
+  }
 });
 
 // ===== 시작 =====
@@ -675,7 +857,7 @@ window.addEventListener("resize", () => {
 });
 buildWalls();
 spawnStickers();
-loadCollection().forEach(item => spawnPhotoSticker(item, false));  // 채집품 복원
+loadCollection().forEach((item, i) => spawnPhotoSticker(item, false, i));  // 채집품 복원
 Runner.run(Runner.create(), engine);
 render();
 </script>
