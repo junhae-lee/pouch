@@ -616,7 +616,7 @@
 <div id="processing">
   <div class="scissors">✂️</div>
   <p>누끼 따는 중...</p>
-  <small>첫 채집은 AI 모델을 내려받느라 시간이 걸릴 수 있어요 (한 번만!)</small>
+  <small id="procStatus">첫 채집은 AI 모델을 내려받느라 시간이 걸릴 수 있어요 (한 번만!)</small>
 </div>
 
 <div id="rotateGuard">
@@ -1282,7 +1282,18 @@ function closeCamera() {
 
 // ===== AI 누끼 =====
 const processingEl = document.getElementById("processing");
+const procStatus = document.getElementById("procStatus");
 let removeBackgroundFn = null;
+
+// 경량(quint8) 모델 = 몇 배 빠름, 품질 차이 미미 + 다운로드 진행률 표시
+const NUKKI_CONFIG = {
+  model: "isnet_quint8",
+  progress: (key, cur, tot) => {
+    if (tot && processingEl.classList.contains("open")) {
+      procStatus.textContent = `AI 모델 내려받는 중 ${Math.round(cur / tot * 100)}%`;
+    }
+  },
+};
 
 async function getNukkiEngine() {
   if (!removeBackgroundFn) {
@@ -1291,6 +1302,19 @@ async function getNukkiEngine() {
   }
   return removeBackgroundFn;
 }
+
+// 🔥 워밍업: 앱 켜지면 뒤에서 미리 모델 준비 (첫 채집 대폭 단축)
+let nukkiWarm = false;
+setTimeout(async () => {
+  try {
+    const rb = await getNukkiEngine();
+    const c = document.createElement("canvas");
+    c.width = 8; c.height = 8;
+    const bl = await new Promise(r => c.toBlob(r, "image/png"));
+    await rb(bl, NUKKI_CONFIG);   // 8px 더미로 에셋 전부 로드
+    nukkiWarm = true;
+  } catch {}
+}, 1500);
 
 // 투명 여백을 잘라내고 알맞은 크기로 축소
 function trimAndShrink(img) {
@@ -1325,8 +1349,11 @@ async function processAndCollect(cap) {
   let item = null;
   try {
     const removeBackground = await getNukkiEngine();
+    procStatus.textContent = nukkiWarm
+      ? "잠깐이면 돼요!"
+      : "첫 채집은 AI 모델을 내려받느라 시간이 걸릴 수 있어요 (한 번만!)";
     const blob = await new Promise(r => cap.toBlob(r, "image/png"));
-    const cutBlob = await removeBackground(blob);
+    const cutBlob = await removeBackground(blob, NUKKI_CONFIG);
     const img = new Image();
     await new Promise((res, rej) => {
       img.onload = res; img.onerror = rej;
