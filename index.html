@@ -504,17 +504,28 @@
     min-height: 34px;
   }
   .tray-label { font-size: 13px; font-weight: 700; color: #8a8a85; }
+  #printSelTools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  #printSelTools[hidden] { display: none; }
+  .ps-label { flex: none; font-size: 15px; }
+  #printScale { flex: 1; accent-color: #a2dc00; height: 26px; }
+  #printScaleVal { flex: none; width: 42px; text-align: right; font-size: 12px; font-weight: 700; color: #7fae00; }
   #printDelete {
     flex: none;
-    padding: 7px 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 700;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    font-size: 15px;
+    padding: 0;
     background: rgba(220,70,70,0.08);
     border: 1px solid rgba(200,60,60,0.45);
     color: #c94b4b;
   }
-  #printDelete[hidden] { display: none; }
+  .print-tools .tray-label:not(:only-child) { flex: none; }
+  .print-tools.selecting .tray-label { display: none; }
   #printTray {
     display: flex;
     gap: 10px;
@@ -885,8 +896,13 @@
     <div class="sheet-hint">아래 트레이에서 스티커를 탭해서<br>시트에 올려주세요</div>
   </div>
   <div class="print-tools">
-    <div class="tray-label">내 스티커</div>
-    <button id="printDelete" hidden>🗑️ 선택 삭제</button>
+    <div class="tray-label">내 스티커 · 시트 위를 탭하면 크기 조절!</div>
+    <div id="printSelTools" hidden>
+      <span class="ps-label">📏</span>
+      <input type="range" id="printScale" min="30" max="200" value="100">
+      <span id="printScaleVal">100%</span>
+      <button id="printDelete">🗑️</button>
+    </div>
   </div>
   <div id="printTray"></div>
 </div>
@@ -1995,10 +2011,29 @@ function folderLayout() {
 }
 
 // 시트 위 스티커 표시 크기 (파우치에서 보이는 크기 비율 그대로)
-function placeSize(st) {
-  const k = 110 / Math.max(st.w, st.h) * (st.scale || 1);
+function placeSize(st, p) {
+  const k = 110 / Math.max(st.w, st.h) * (st.scale || 1) * ((p && p.s) || 1);
   const ratio = printSheet.clientWidth / 390;
   return { w: st.w * k * ratio, h: st.h * k * ratio };
+}
+
+// 파우치의 모든 오브젝을 시트에 자동 입장 (사용자가 뺀 건 제외)
+function ensureAllPlaced() {
+  const f = currentFolder();
+  const layout = folderLayout();
+  f.printSkip = f.printSkip || {};
+  const placed = new Set(layout.map(p => p.idx));
+  f.stickers.forEach((st, i) => {
+    if (!placed.has(i) && !f.printSkip[i]) {
+      const n = layout.length;
+      layout.push({
+        idx: i, s: 1,
+        x: 0.2 + (n % 3) * 0.3,
+        y: 0.15 + (Math.floor(n / 3) % 5) * 0.19,
+      });
+    }
+  });
+  saveDB();
 }
 
 function buildTray() {
@@ -2008,8 +2043,10 @@ function buildTray() {
     b.className = "tray-item";
     b.style.backgroundImage = `url(${st.url})`;
     b.addEventListener("click", () => {
+      const f = currentFolder();
+      if (f.printSkip) delete f.printSkip[i];
       const n = folderLayout().length;
-      folderLayout().push({ idx: i, x: 0.28 + (n % 3) * 0.22, y: 0.22 + Math.floor(n / 3) % 4 * 0.2 });
+      folderLayout().push({ idx: i, s: 1, x: 0.28 + (n % 3) * 0.22, y: 0.22 + Math.floor(n / 3) % 4 * 0.2 });
       saveDB();
       renderPlacements();
     });
@@ -2017,12 +2054,33 @@ function buildTray() {
   });
 }
 
+const printSelTools = document.getElementById("printSelTools");
+const printScale = document.getElementById("printScale");
+const printScaleVal = document.getElementById("printScaleVal");
+
 function selectPlacement(i) {
   printSel = i;
-  printDeleteBtn.hidden = (i === null);
+  printSelTools.hidden = (i === null);
+  document.querySelector(".print-tools").classList.toggle("selecting", i !== null);
+  if (i !== null) {
+    const p = folderLayout()[i];
+    printScale.value = Math.round((p.s || 1) * 100);
+    printScaleVal.textContent = printScale.value + "%";
+  }
   [...printSheet.querySelectorAll(".print-item")].forEach((el, j) =>
     el.classList.toggle("sel", j === i));
 }
+
+printScale.addEventListener("input", () => {
+  if (printSel === null) return;
+  const p = folderLayout()[printSel];
+  p.s = printScale.value / 100;
+  printScaleVal.textContent = printScale.value + "%";
+  saveDB();
+  const keep = printSel;
+  renderPlacements();
+  selectPlacement(keep);
+});
 
 function renderPlacements() {
   [...printSheet.querySelectorAll(".print-item")].forEach(el => el.remove());
@@ -2031,7 +2089,7 @@ function renderPlacements() {
   const W = printSheet.clientWidth, H = printSheet.clientHeight;
   layout.forEach((p, i) => {
     const st = currentFolder().stickers[p.idx];
-    const s = placeSize(st);
+    const s = placeSize(st, p);
     const el = document.createElement("div");
     el.className = "print-item";
     el.style.width = s.w + "px";
@@ -2068,7 +2126,12 @@ printSheet.addEventListener("pointerdown", () => selectPlacement(null));
 
 printDeleteBtn.addEventListener("click", () => {
   if (printSel === null) return;
-  folderLayout().splice(printSel, 1);
+  const removed = folderLayout().splice(printSel, 1)[0];
+  const f = currentFolder();
+  if (!folderLayout().some(p => p.idx === removed.idx)) {
+    f.printSkip = f.printSkip || {};
+    f.printSkip[removed.idx] = true;   // 자동 재입장 방지
+  }
   saveDB();
   renderPlacements();
 });
@@ -2076,7 +2139,10 @@ printDeleteBtn.addEventListener("click", () => {
 document.getElementById("printBtn").addEventListener("click", () => {
   buildTray();
   printPage.classList.add("open");
-  requestAnimationFrame(renderPlacements);   // 시트 크기 확정 후 배치
+  requestAnimationFrame(() => {
+    ensureAllPlaced();   // 파우치 오브젝 전원 자동 입장
+    renderPlacements();
+  });
 });
 document.getElementById("printBack").addEventListener("click", () => {
   printPage.classList.remove("open");
@@ -2097,7 +2163,7 @@ document.getElementById("printOrder").addEventListener("click", async () => {
     const st = currentFolder().stickers[p.idx];
     const img = new Image();
     await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = st.url; });
-    const s = placeSize(st);
+    const s = placeSize(st, p);
     const w = s.w / sheetW * W, h = s.h / (printSheet.clientHeight) * H;
     const x = p.x * W - w / 2, y = p.y * H - h / 2;
     // 흰색 다이컷 테두리 (실루엣을 흰색으로 8방향 스탬프)
