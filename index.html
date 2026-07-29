@@ -458,6 +458,83 @@
     transition: background 0.12s, transform 0.1s;
   }
   #shutter:active::after { background: #d7d7d7; transform: scale(0.9); }
+  /* ===== 프린트 배치 ===== */
+  #printSheet {
+    position: relative;
+    width: min(78vw, 300px);
+    aspect-ratio: 210 / 297;
+    margin: 0 auto;
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    touch-action: none;
+    flex: none;
+  }
+  .sheet-hint {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font-size: 13px;
+    color: #b5b5ae;
+    pointer-events: none;
+  }
+  .print-item {
+    position: absolute;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    cursor: grab;
+    filter:
+      drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff)
+      drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
+      drop-shadow(0 2px 3px rgba(0,0,0,0.2));
+  }
+  .print-item.sel {
+    outline: 2px dashed #a2dc00;
+    outline-offset: 3px;
+  }
+  .print-tools {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 34px;
+  }
+  .tray-label { font-size: 13px; font-weight: 700; color: #8a8a85; }
+  #printDelete {
+    flex: none;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(220,70,70,0.08);
+    border: 1px solid rgba(200,60,60,0.45);
+    color: #c94b4b;
+  }
+  #printDelete[hidden] { display: none; }
+  #printTray {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 6px 2px 12px;
+    flex: none;
+  }
+  .tray-item {
+    flex: none;
+    width: 64px; height: 64px;
+    border-radius: 14px;
+    background-color: rgba(0,0,0,0.04);
+    background-size: 80%;
+    background-repeat: no-repeat;
+    background-position: center;
+    border: 1.5px solid rgba(0,0,0,0.1);
+    padding: 0;
+  }
+  .tray-item:active { transform: scale(0.93); }
+
   /* ===== 채집 검수 화면 ===== */
   #review {
     display: none;
@@ -670,7 +747,16 @@
       </svg>
     </button>
     <div id="folderName" class="hdr-title"></div>
-    <div class="hdr-spacer"></div>
+    <button id="printBtn" class="hdr-round" aria-label="프린트 배치">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="20" fill="white"/>
+        <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+        <path d="M14 17V11H26V17" stroke="#1c1c1a" stroke-width="1.8" stroke-linejoin="round"/>
+        <rect x="11" y="17" width="18" height="8" rx="2" stroke="#1c1c1a" stroke-width="1.8"/>
+        <rect x="14" y="22" width="12" height="7" rx="1" fill="white" stroke="#1c1c1a" stroke-width="1.8"/>
+        <circle cx="25.5" cy="20" r="1" fill="#a2dc00"/>
+      </svg>
+    </button>
   </header>
 
   <div id="mainControls">
@@ -781,6 +867,28 @@
   <div class="opt-label">색</div>
   <div id="colorOpts" class="opts"></div>
   <button id="folderDelete">🗑️ 파우치 삭제</button>
+</div>
+
+<div id="printPage" class="page">
+  <div class="page-head">
+    <button id="printBack" class="hdr-round" aria-label="뒤로">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="20" fill="white"/>
+        <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+        <path d="M23 12L15 20L23 28" stroke="#1c1c1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <h2>프린트 배치</h2>
+    <button id="printOrder" class="pill-btn save">🖨️ 신청</button>
+  </div>
+  <div id="printSheet">
+    <div class="sheet-hint">아래 트레이에서 스티커를 탭해서<br>시트에 올려주세요</div>
+  </div>
+  <div class="print-tools">
+    <div class="tray-label">내 스티커</div>
+    <button id="printDelete" hidden>🗑️ 선택 삭제</button>
+  </div>
+  <div id="printTray"></div>
 </div>
 
 <div id="resizePanel">
@@ -1869,6 +1977,148 @@ folderDeleteEl.addEventListener("click", () => {
   else saveDB();
   folderEditEl.classList.remove("open");
   buildFolderObjects();
+});
+
+// ===== 프린트 배치 & 신청 =====
+const printPage = document.getElementById("printPage");
+const printSheet = document.getElementById("printSheet");
+const printTray = document.getElementById("printTray");
+const printDeleteBtn = document.getElementById("printDelete");
+let printSel = null;   // 선택된 배치 인덱스
+
+function folderLayout() {
+  const f = currentFolder();
+  if (!f.printLayout) f.printLayout = [];
+  // 삭제된 스티커를 가리키는 배치는 정리
+  f.printLayout = f.printLayout.filter(p => f.stickers[p.idx]);
+  return f.printLayout;
+}
+
+// 시트 위 스티커 표시 크기 (파우치에서 보이는 크기 비율 그대로)
+function placeSize(st) {
+  const k = 110 / Math.max(st.w, st.h) * (st.scale || 1);
+  const ratio = printSheet.clientWidth / 390;
+  return { w: st.w * k * ratio, h: st.h * k * ratio };
+}
+
+function buildTray() {
+  printTray.innerHTML = "";
+  currentFolder().stickers.forEach((st, i) => {
+    const b = document.createElement("button");
+    b.className = "tray-item";
+    b.style.backgroundImage = `url(${st.url})`;
+    b.addEventListener("click", () => {
+      const n = folderLayout().length;
+      folderLayout().push({ idx: i, x: 0.28 + (n % 3) * 0.22, y: 0.22 + Math.floor(n / 3) % 4 * 0.2 });
+      saveDB();
+      renderPlacements();
+    });
+    printTray.appendChild(b);
+  });
+}
+
+function selectPlacement(i) {
+  printSel = i;
+  printDeleteBtn.hidden = (i === null);
+  [...printSheet.querySelectorAll(".print-item")].forEach((el, j) =>
+    el.classList.toggle("sel", j === i));
+}
+
+function renderPlacements() {
+  [...printSheet.querySelectorAll(".print-item")].forEach(el => el.remove());
+  const layout = folderLayout();
+  printSheet.querySelector(".sheet-hint").style.display = layout.length ? "none" : "grid";
+  const W = printSheet.clientWidth, H = printSheet.clientHeight;
+  layout.forEach((p, i) => {
+    const st = currentFolder().stickers[p.idx];
+    const s = placeSize(st);
+    const el = document.createElement("div");
+    el.className = "print-item";
+    el.style.width = s.w + "px";
+    el.style.height = s.h + "px";
+    el.style.left = (p.x * W - s.w / 2) + "px";
+    el.style.top = (p.y * H - s.h / 2) + "px";
+    el.style.backgroundImage = `url(${st.url})`;
+    // 드래그 배치
+    el.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      selectPlacement(i);
+      const rect = printSheet.getBoundingClientRect();
+      try { el.setPointerCapture(e.pointerId); } catch {}
+      const move = (ev) => {
+        p.x = Math.min(0.97, Math.max(0.03, (ev.clientX - rect.left) / rect.width));
+        p.y = Math.min(0.97, Math.max(0.03, (ev.clientY - rect.top) / rect.height));
+        el.style.left = (p.x * rect.width - s.w / 2) + "px";
+        el.style.top = (p.y * rect.height - s.h / 2) + "px";
+      };
+      const up = () => {
+        el.removeEventListener("pointermove", move);
+        el.removeEventListener("pointerup", up);
+        saveDB();
+      };
+      el.addEventListener("pointermove", move);
+      el.addEventListener("pointerup", up);
+    });
+    printSheet.appendChild(el);
+  });
+  selectPlacement(null);
+}
+
+printSheet.addEventListener("pointerdown", () => selectPlacement(null));
+
+printDeleteBtn.addEventListener("click", () => {
+  if (printSel === null) return;
+  folderLayout().splice(printSel, 1);
+  saveDB();
+  renderPlacements();
+});
+
+document.getElementById("printBtn").addEventListener("click", () => {
+  buildTray();
+  printPage.classList.add("open");
+  requestAnimationFrame(renderPlacements);   // 시트 크기 확정 후 배치
+});
+document.getElementById("printBack").addEventListener("click", () => {
+  printPage.classList.remove("open");
+});
+
+// 🖨️ 신청: A4 고해상도(1240×1754) 인쇄 파일 생성 + 저장
+document.getElementById("printOrder").addEventListener("click", async () => {
+  const layout = folderLayout();
+  if (!layout.length) { alert("시트에 스티커를 하나 이상 올려주세요!"); return; }
+  const W = 1240, H = 1754;   // A4 150dpi
+  const c = document.createElement("canvas");
+  c.width = W; c.height = H;
+  const ctx = c.getContext("2d");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, W, H);
+  const sheetW = printSheet.clientWidth;
+  for (const p of layout) {
+    const st = currentFolder().stickers[p.idx];
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = st.url; });
+    const s = placeSize(st);
+    const w = s.w / sheetW * W, h = s.h / (printSheet.clientHeight) * H;
+    const x = p.x * W - w / 2, y = p.y * H - h / 2;
+    // 흰색 다이컷 테두리 (실루엣을 흰색으로 8방향 스탬프)
+    const sil = document.createElement("canvas");
+    sil.width = Math.ceil(w); sil.height = Math.ceil(h);
+    const sctx = sil.getContext("2d");
+    sctx.drawImage(img, 0, 0, sil.width, sil.height);
+    sctx.globalCompositeOperation = "source-in";
+    sctx.fillStyle = "#ffffff";
+    sctx.fillRect(0, 0, sil.width, sil.height);
+    const E = Math.max(4, w * 0.03);
+    for (const [dx, dy] of [[E,0],[-E,0],[0,E],[0,-E],[E,E],[E,-E],[-E,E],[-E,-E]]) {
+      ctx.drawImage(sil, x + dx, y + dy, w, h);
+    }
+    ctx.drawImage(img, x, y, w, h);
+  }
+  const a = document.createElement("a");
+  a.href = c.toDataURL("image/png");
+  a.download = `pouch-print-${currentFolder().name}.png`;
+  a.click();
+  alert("🖨️ 인쇄용 파일이 저장됐어요!\nA4 규격(다이컷 테두리 포함)이라 인쇄소에 바로 맡길 수 있어요.\n※ 앱 내 자동 인쇄 주문은 추후 연동 예정!");
 });
 
 // ===== 시작 =====
