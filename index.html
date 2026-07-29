@@ -38,7 +38,29 @@
     justify-content: space-between;
     pointer-events: none;
   }
-  header button, header .title-group { pointer-events: auto; }
+  header button { pointer-events: auto; }
+  .hdr-round {
+    flex: none;
+    width: 40px; height: 40px;
+    padding: 0;
+    border: none;
+    background: none;
+    transition: transform 0.1s;
+  }
+  .hdr-round:active { transform: scale(0.9); }
+  .hdr-round svg { display: block; }
+  .hdr-title {
+    flex: 1;
+    text-align: center;
+    font-size: 17px;
+    font-weight: 800;
+    color: #1c1c1a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 8px;
+  }
+  .hdr-spacer { flex: none; width: 40px; }
   .logo {
     font-family: "Baloo 2", "Noto Sans KR", sans-serif;
     font-size: 34px;
@@ -629,10 +651,15 @@
   <div id="pouch"></div>
 
   <header>
-    <div class="title-group">
-      <div class="logo">Pouch</div>
-      <div id="folderName" class="folder-name"></div>
-    </div>
+    <button id="backBtn" class="hdr-round" aria-label="파우치 목록으로">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="20" fill="white"/>
+        <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
+        <path d="M23 12L15 20L23 28" stroke="#1c1c1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div id="folderName" class="hdr-title"></div>
+    <div class="hdr-spacer"></div>
   </header>
 
   <div id="mainControls">
@@ -1758,6 +1785,11 @@ navCamBtn.addEventListener("click", () => {
   openCamera(facing);
 });
 // 👝 파우치 탭: 카메라 끄고, 스티커 홈이면 파우치 목록 열기
+document.getElementById("backBtn").addEventListener("click", () => {
+  if (cameraEl.classList.contains("open")) closeCamera();
+  openDrawer();   // 파우치 목록으로
+});
+
 navBagBtn.addEventListener("click", () => {
   const camWasOpen = cameraEl.classList.contains("open");
   if (camWasOpen) { closeCamera(); return; }   // 카메라 → 스티커 홈
