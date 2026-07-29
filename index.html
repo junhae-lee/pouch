@@ -154,6 +154,7 @@
   }
   .list-btns button:active { transform: scale(0.9); }
   .list-btns svg { display: block; }
+  .list-btns svg[hidden] { display: none; }  /* 정렬 아이콘: 하나만 노출 */
   #folderStage {
     position: relative;
     flex: 1;
@@ -1655,9 +1656,9 @@ function exitFGrid() {
 }
 
 function updateViewBtn() {
-  // 버튼엔 "다음에 전환될 모드" 아이콘 표시
-  folderViewBtn.querySelector(".ic-grid").hidden = (fMode === "grid");
-  folderViewBtn.querySelector(".ic-free").hidden = (fMode === "free");
+  // 버튼엔 "다음에 전환될 모드" 아이콘 하나만 표시 (SVG는 attribute로 제어)
+  folderViewBtn.querySelector(".ic-grid").toggleAttribute("hidden", fMode === "grid");
+  folderViewBtn.querySelector(".ic-free").toggleAttribute("hidden", fMode === "free");
 }
 
 folderViewBtn.addEventListener("click", () => {
