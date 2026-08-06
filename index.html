@@ -216,6 +216,7 @@
     background: #ffffff;
     border: 8px solid #000;
     border-radius: 24px;
+    padding-top: max(25px, env(safe-area-inset-top));
     flex-direction: column;
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     gap: 18px;
@@ -226,9 +227,17 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    padding: 0 28px;
+    margin-bottom: 8px;
   }
-  .page-head h2 { font-size: 18px; font-weight: 800; }
+  .page-head h2 {
+    flex: 1;
+    font-size: 20px;
+    font-weight: 800;
+    text-align: center;
+    color: #000;
+  }
+  .hdr50.txt { font-size: 16px; font-weight: 800; color: #000; }
   .round-btn {
     width: 44px; height: 44px;
     flex: none;
@@ -477,13 +486,13 @@
   /* ===== 프린트 배치 ===== */
   #printSheet {
     position: relative;
-    width: min(78vw, 300px);
-    aspect-ratio: 210 / 297;
-    margin: 0 auto;
+    width: min(84vw, 315px);
+    aspect-ratio: 315 / 424;
+    margin: 8px auto 0;
     background: #ffffff;
     border: 1px solid #000;
-    border-radius: 6px;
-    box-shadow: 2px 4px 0 #000;
+    border-radius: 30px;
+    box-shadow: none;
     overflow: hidden;
     touch-action: none;
     flex: none;
@@ -510,16 +519,17 @@
       drop-shadow(0 2px 3px rgba(0,0,0,0.2));
   }
   .print-item.sel {
-    outline: 2px dashed #000;
+    outline: 2px dashed #a2dc00;
     outline-offset: 3px;
   }
   .print-tools {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    min-height: 34px;
+    padding: 14px 28px 0;
+    min-height: 52px;
   }
-  .tray-label { font-size: 13px; font-weight: 700; color: #8a8a85; }
+  .tray-label { font-size: 14px; font-weight: 500; color: #8a8a85; }
   #printSelTools {
     display: flex;
     align-items: center;
@@ -527,14 +537,14 @@
     flex: 1;
   }
   #printSelTools[hidden] { display: none; }
-  .ps-hint { flex: 1; font-size: 12px; color: #8a8a85; font-weight: 700; }
+  .ps-hint { flex: 1; font-size: 14px; color: #8a8a85; font-weight: 500; }
   .print-item .rs-handle {
     position: absolute;
     right: -11px; bottom: -11px;
     width: 22px; height: 22px;
     border-radius: 50%;
-    background: #e1f0ff;
-    border: 2px solid #000;
+    background: #a2dc00;
+    border: 2px solid #fff;
     box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     display: none;
     touch-action: none;
@@ -544,8 +554,8 @@
   .print-item.sel { overflow: visible; }
   #printDelete {
     flex: none;
-    width: 44px; height: 44px;
-    border-radius: 20px;
+    width: 52px; height: 52px;
+    border-radius: 22px;
     padding: 0;
     background: #fff;
     border: 1px solid #000;
@@ -560,21 +570,20 @@
   .print-tools.selecting .tray-label { display: none; }
   #printTray {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     overflow-x: auto;
-    padding: 6px 2px 12px;
+    padding: 14px 28px 16px;
     flex: none;
   }
   .tray-item {
     flex: none;
     width: 64px; height: 64px;
     border-radius: 14px;
-    background-color: #fff;
+    background-color: rgba(0,0,0,0.04);
     background-size: 80%;
     background-repeat: no-repeat;
     background-position: center;
     border: 1px solid #000;
-    box-shadow: 2px 4px 0 #000;
     padding: 0;
   }
   .tray-item:active { transform: scale(0.93); }
@@ -843,9 +852,9 @@
 
 <div id="folderEdit" class="page">
   <div class="page-head">
-    <button class="pill-btn" id="editCancel">취소</button>
+    <button class="hdr50 txt" id="editCancel">취소</button>
     <h2>파우치 편집</h2>
-    <button class="pill-btn save" id="editSave">저장</button>
+    <button class="hdr50 txt" id="editSave">저장</button>
   </div>
   <div id="editPreview"></div>
   <input id="editName" maxlength="12" placeholder="파우치 이름">
@@ -858,15 +867,9 @@
 
 <div id="printPage" class="page">
   <div class="page-head">
-    <button id="printBack" class="hdr-round" aria-label="뒤로">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="40" height="40" rx="20" fill="white"/>
-        <rect x="0.5" y="0.5" width="39" height="39" rx="19.5" stroke="black" stroke-opacity="0.12"/>
-        <path d="M23 12L15 20L23 28" stroke="#1c1c1a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </button>
+    <button id="printBack" class="hdr50" aria-label="뒤로"><svg width="24" height="24" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M30.438 26.1094C30.0958 25.6857 29.7664 25.3119 29.477 24.9997C29.7664 24.6876 30.0958 24.3137 30.438 23.8901C31.4716 22.6106 32.7174 20.7608 33.2346 18.7088C33.4689 17.7792 33.149 16.8962 32.5306 16.3264C31.9307 15.7734 31.0801 15.5347 30.2387 15.7093C26.1274 16.5635 20.4678 18.515 16.4024 22.3924C14.907 23.8184 14.9071 26.182 16.4024 27.6081C20.4679 31.4852 26.1275 33.4362 30.2386 34.2901C31.0802 34.4649 31.9306 34.226 32.5306 33.6731C33.149 33.1033 33.4689 32.2203 33.2346 31.2906C32.7174 29.2386 31.4716 27.3888 30.438 26.1094Z" fill="black"/></svg></button>
     <h2>프린트 배치</h2>
-    <button id="printOrder" class="pill-btn save">🖨️ 신청</button>
+    <button id="printOrder" class="hdr50" aria-label="프린트 신청"><svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#cc)"><path fill-rule="evenodd" clip-rule="evenodd" d="M18.5885 12.2046L15.7085 9.23462C15.1316 8.63968 14.7766 7.91158 14.6419 7.15276C14.139 7.14106 13.5997 7.13476 13.0192 7.13476C8.52862 7.13476 6.50466 7.5116 4.69196 7.8491C4.42194 7.89938 4.15662 7.94878 3.88852 7.99592C2.41622 8.25488 1.25 9.52144 1.25 11.0627V22.8016C1.25 24.3552 2.46156 25.6342 3.99098 25.907C4.22434 25.9486 4.4563 25.9918 4.69184 26.0356C6.50456 26.3732 8.52854 26.75 13.0192 26.75C17.5099 26.75 19.5339 26.3732 21.3466 26.0356C21.5822 25.9918 21.8142 25.9486 22.0474 25.907C23.577 25.6342 24.7884 24.3552 24.7884 22.8016V11.6387C24.2224 12.4877 23.3444 13.1001 22.3232 13.3258C20.9682 13.6253 19.5546 13.2009 18.5885 12.2046Z" fill="#1476D9"/><path fill-rule="evenodd" clip-rule="evenodd" d="M27.611 0.492191C28.1676 1.10577 28.1214 2.05439 27.5078 2.61101C26.2872 3.71837 25.4678 4.62507 24.7928 5.67887C24.1116 6.74193 23.5362 8.01869 22.8766 9.91317C22.7056 10.4047 22.292 10.7724 21.7838 10.8847C21.2756 10.997 20.7456 10.8379 20.3832 10.4642L17.5032 7.49423C16.9265 6.89951 16.9411 5.94987 17.5359 5.37315C18.1306 4.79645 19.0802 4.81107 19.6569 5.40579L20.9 6.68763C21.3184 5.70895 21.7588 4.85343 22.2668 4.06049C23.1338 2.70721 24.1568 1.6004 25.4922 0.389021C26.1058 -0.167583 27.0544 -0.121392 27.611 0.492191ZM15.5508 20.895C15.5508 20.0666 16.2224 19.395 17.0508 19.395H20.5376C21.366 19.395 22.0376 20.0666 22.0376 20.895C22.0376 21.7234 21.366 22.395 20.5376 22.395H17.0508C16.2224 22.395 15.5508 21.7234 15.5508 20.895ZM13.2499 5.82111C13.4495 5.82173 13.6232 5.82225 13.7372 5.82225C14.4276 5.82225 14.9872 6.38189 14.9872 7.07225C14.9872 7.76261 14.4276 8.32225 13.7372 8.32225C13.6028 8.32225 13.4098 8.32165 13.1957 8.32101C12.7087 8.31953 12.1122 8.31771 11.8461 8.32171L11.8305 8.32207C8.27382 8.38169 6.53338 8.70695 4.93654 9.00535L4.92158 9.00815L4.9186 9.00871C4.6507 9.05877 4.37994 9.10937 4.10582 9.15775C3.18598 9.32013 2.5 10.1089 2.5 11.0049V12.0952H18.4824L18.5885 12.2046C19.4942 13.1387 20.7932 13.57 22.0686 13.3735C22.1536 13.3604 22.2386 13.3445 22.3232 13.3258C22.7468 13.2322 23.1456 13.0721 23.5078 12.8562L23.5384 12.8377C24.3206 12.362 24.928 11.6246 25.2378 10.7351C25.3666 10.3651 25.4898 10.026 25.6092 9.71349C25.8722 9.94265 26.0384 10.2801 26.0384 10.6563V22.787C26.0384 25.0262 24.3166 26.7676 22.2678 27.1342C22.04 27.175 21.8122 27.2176 21.576 27.2616C19.7106 27.6102 17.6071 28 13.0192 28C8.43132 28 6.32778 27.6102 4.46234 27.2616C4.22598 27.2176 3.99866 27.175 3.77076 27.1342C1.72176 26.7676 0 25.0262 0 22.787V11.0049C0 8.80697 1.64648 7.05325 3.67122 6.69583C3.93212 6.64977 4.19132 6.60135 4.46234 6.55069C6.14142 6.23691 8.02706 5.88645 11.7717 5.82271L11.7886 5.82231C12.0725 5.81755 12.7441 5.81959 13.2499 5.82111ZM2.5 22.787V16.0952H23.5384V22.787C23.5384 23.6666 22.8372 24.4926 21.8272 24.6734C21.5892 24.716 21.3526 24.7602 21.1186 24.8038L21.0948 24.8084C19.3407 25.1362 17.3942 25.5 13.0192 25.5C8.64428 25.5 6.69778 25.1362 4.9436 24.8084L4.92158 24.8042L4.9191 24.8038C4.6855 24.76 4.44884 24.7158 4.21122 24.6734C3.20136 24.4926 2.5 23.6666 2.5 22.787Z" fill="black"/></g><defs><clipPath id="cc"><rect width="28" height="28" fill="white"/></clipPath></defs></svg></button>
   </div>
   <div id="printSheet">
     <div class="sheet-hint">아래 트레이에서 스티커를 탭해서<br>시트에 올려주세요</div>
@@ -1277,8 +1280,12 @@ function handleOrientation(e) {
   if (e.gamma == null || e.beta == null) return;
   const gx = Math.max(-1, Math.min(1, e.gamma / 40));
   const gy = Math.max(-1, Math.min(1, e.beta / 40));
-  engine.gravity.x = gx;
-  engine.gravity.y = gy;
+  // 파우치 안 스티커 (자유 모드일 때만)
+  if (mode === "free") {
+    engine.gravity.x = gx;
+    engine.gravity.y = gy;
+  }
+  // 홈(파우치 목록) 도형 (자유 모드일 때만)
   if (typeof fEngine !== "undefined" && fMode === "free") {
     fEngine.gravity.x = gx;
     fEngine.gravity.y = gy;
@@ -1288,16 +1295,25 @@ function handleOrientation(e) {
 // 폰을 흔들면 스티커 대폭발 (버튼 없이!)
 let lastShake = 0;
 function handleMotion(e) {
-  if (mode !== "free") return;
+  // 가속도 값 (기기에 따라 acceleration이 비어있으면 중력 포함 값으로 대체)
+  let mag = 0;
   const a = e.acceleration;
-  if (!a) return;
-  const mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
-  if (mag > 20 && performance.now() - lastShake > 900) {
+  if (a && (a.x != null || a.y != null || a.z != null)) {
+    mag = Math.hypot(a.x || 0, a.y || 0, a.z || 0);
+  } else {
+    const g = e.accelerationIncludingGravity;
+    if (!g) return;
+    mag = Math.abs(Math.hypot(g.x || 0, g.y || 0, g.z || 0) - 9.81);
+  }
+  if (mag > 16 && performance.now() - lastShake > 800) {
     lastShake = performance.now();
-    if (folderListEl.classList.contains("open")) {
-      if (fMode === "free") fShakeBurst();
-    } else {
-      shakeBurst();
+    if (navigator.vibrate) navigator.vibrate(20);
+    const onHome = folderListEl.classList.contains("open");
+    if (onHome) {
+      if (fMode === "free") fShakeBurst();       // 홈: 파우치 도형들이 튀어오름
+    } else if (!cameraEl.classList.contains("open")) {
+      if (mode === "grid") { mode = "free"; exitGrid(); }  // 정렬 중이면 풀고 흔들기
+      shakeBurst();                                // 파우치 안: 스티커들이 튀어오름
     }
   }
 }
